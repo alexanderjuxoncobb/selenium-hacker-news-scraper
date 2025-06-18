@@ -38,9 +38,9 @@ async def startup_event():
         init_interest_weights(db)
         print("✅ Initialized default interest weights")
     
-    # Import any existing JSON data
+    # Import any existing JSON data (both old and enhanced formats)
     import glob
-    json_files = glob.glob("../hn_scrape_*.json")
+    json_files = glob.glob("../hn_scrape_*.json") + glob.glob("../enhanced_hn_scrape_*.json")
     for json_file in json_files:
         try:
             # Check if this file's data is already imported
@@ -140,9 +140,24 @@ async def api_stories(target_date: str):
 
 @app.post("/api/interaction/{story_id}")
 async def log_story_interaction(story_id: int, interaction_type: str = Form(...), duration: Optional[int] = Form(None)):
-    """Log user interaction with a story"""
-    db.log_interaction(story_id, interaction_type, duration)
-    return {"status": "logged", "story_id": story_id, "interaction": interaction_type}
+    """Log user interaction with a story for learning system"""
+    try:
+        db.log_interaction(story_id, interaction_type, duration)
+        
+        # For thumbs up/down, we can immediately learn from this feedback
+        if interaction_type in ['thumbs_up', 'thumbs_down']:
+            print(f"📊 User feedback: {interaction_type} for story {story_id}")
+            # TODO: Update interest weights based on feedback
+        
+        return {
+            "status": "logged", 
+            "story_id": story_id, 
+            "interaction": interaction_type,
+            "message": "Feedback recorded for learning system"
+        }
+    except Exception as e:
+        print(f"❌ Error logging interaction: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/interests", response_class=HTMLResponse)
 async def interests_page(request: Request):

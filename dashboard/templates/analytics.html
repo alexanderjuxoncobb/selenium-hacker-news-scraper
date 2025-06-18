@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">
+            📊 Analytics & Trends
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">
+            Insights from your reading behavior and story trends
+        </p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-calendar-alt text-blue-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Days Tracked</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ available_dates|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-newspaper text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Total Stories</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {{ daily_stats|map(attribute='total_stories')|sum }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-star text-yellow-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Relevant Stories</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {{ daily_stats|map(attribute='relevant_stories')|sum }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-percentage text-purple-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Avg Relevance Rate</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {% set total_stories = daily_stats|map(attribute='total_stories')|sum %}
+                        {% set relevant_stories = daily_stats|map(attribute='relevant_stories')|sum %}
+                        {% if total_stories > 0 %}
+                            {{ ((relevant_stories / total_stories) * 100)|round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Trends Chart -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">📈 Daily Story Trends</h2>
+            <p class="text-sm text-gray-500">Total vs relevant stories over time</p>
+        </div>
+        <div class="p-6">
+            <canvas id="trendsChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Interaction Statistics -->
+    {% if interaction_stats %}
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">🖱️ Your Reading Behavior</h2>
+            <p class="text-sm text-gray-500">How you interact with stories (last 30 days)</p>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {% for interaction_type, stats in interaction_stats.items() %}
+                <div class="text-center p-4 border border-gray-200 rounded-lg">
+                    <div class="text-3xl mb-2">
+                        {% if interaction_type == 'click' %}🖱️
+                        {% elif interaction_type == 'thumbs_up' %}👍
+                        {% elif interaction_type == 'thumbs_down' %}👎
+                        {% elif interaction_type == 'save' %}📑
+                        {% elif interaction_type == 'page_read' %}📖
+                        {% else %}📊
+                        {% endif %}
+                    </div>
+                    <div class="text-2xl font-semibold text-gray-900 mb-1">{{ stats.count }}</div>
+                    <div class="text-sm text-gray-500 mb-2">{{ interaction_type.replace('_', ' ').title() }}</div>
+                    {% if stats.avg_duration > 0 %}
+                    <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% set total_feedback = interaction_stats.get('thumbs_up', {}).get('count', 0) + interaction_stats.get('thumbs_down', {}).get('count', 0) %}
+            {% if total_feedback > 0 %}
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 class="font-medium text-blue-900 mb-2">
+                    <i class="fas fa-lightbulb mr-1"></i>
+                    Learning Progress
+                </h3>
+                <p class="text-sm text-blue-800">
+                    You've provided {{ total_feedback }} pieces of feedback. 
+                    {% set approval_rate = (interaction_stats.get('thumbs_up', {}).get('count', 0) / total_feedback * 100)|round(1) %}
+                    Your approval rate is {{ approval_rate }}%, which helps improve future relevance filtering.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Performance -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">📅 Recent Performance</h2>
+            <p class="text-sm text-gray-500">Last 10 days of scraping results</p>
+        </div>
+        <div class="overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Stories</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relevant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relevance Rate</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Points</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Comments</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for day_stats in daily_stats[-10:] %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <a href="/dashboard/{{ day_stats.date }}" class="text-hn-orange hover:underline">
+                                {{ day_stats.date }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ day_stats.total_stories }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                {% if day_stats.relevant_stories > 5 %}bg-green-100 text-green-800
+                                {% elif day_stats.relevant_stories > 2 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ day_stats.relevant_stories }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if day_stats.total_stories > 0 %}
+                                {{ ((day_stats.relevant_stories / day_stats.total_stories) * 100)|round(1) }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ day_stats.avg_points }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ day_stats.total_comments }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js for trends visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Trends Chart
+const ctx = document.getElementById('trendsChart').getContext('2d');
+const trendsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for day in daily_stats %}'{{ day.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Total Stories',
+            data: [{% for day in daily_stats %}{{ day.total_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#6B7280',
+            backgroundColor: 'rgba(107, 114, 128, 0.1)',
+            tension: 0.1
+        }, {
+            label: 'Relevant Stories',
+            data: [{% for day in daily_stats %}{{ day.relevant_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#FF6600',
+            backgroundColor: 'rgba(255, 102, 0, 0.1)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Stories'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            title: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
