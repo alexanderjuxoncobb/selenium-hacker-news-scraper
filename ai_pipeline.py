@@ -350,40 +350,70 @@ class CostOptimizedAI:
             all_comments = "\n\n".join(comments_text)
             
             prompt = f"""
-            Analyze these {len(top_comments)} Hacker News comments and respond with ONLY valid JSON.
+            Extract detailed, specific, quantitative insights from these {len(top_comments)} Hacker News comments. Focus on concrete information, numbers, tools, and technical details that would normally require 30 minutes of reading. Respond with ONLY valid JSON.
 
             COMMENTS:
             {all_comments}
 
-            CRITICAL: 
-            - NO quotes inside strings (use single quotes or paraphrase)
-            - NO line breaks inside strings
-            - NO special characters that break JSON
-            - Keep all text simple and clean
+            EXTRACTION PRIORITIES:
+            - Specific numbers, metrics, benchmarks, percentages, costs, performance data
+            - Tool names, library versions, framework names, specific technologies
+            - Company names, product names, service names, platform names
+            - Technical implementation details, setup instructions, configuration specifics
+            - Cost comparisons with actual dollar amounts or resource requirements
+            - Performance measurements, speed comparisons, efficiency gains/losses
+            - Success/failure experiences with concrete details and outcomes
+            - Specific disagreements with technical reasoning and counter-arguments
+            - Market intelligence, business strategies, competitive positioning
+            - Hardware requirements, system specifications, resource constraints
 
-            Return this exact JSON structure:
+            Return this exact JSON structure with detailed, specific information:
             {{
-                "main_themes": ["topic1", "topic2"],
-                "agreement_points": ["agreement1", "agreement2"],
-                "disagreement_points": ["criticism1", "criticism2"],
-                "sentiment_summary": "brief description without quotes",
-                "top_comment_summary": "2-3 sentence summary without quotes or special chars",
-                "structured_sentiment": {{
-                    "overall_description": "brief sentiment description",
-                    "excitement": {{
-                        "title": "Excitement",
-                        "points": ["point1", "point2"]
-                    }},
-                    "skepticism": {{
-                        "title": "Skepticism", 
-                        "points": ["concern1", "concern2"]
-                    }},
-                    "technical": {{
-                        "title": "Technical Discussion",
-                        "points": ["tech point1", "tech point2"]
-                    }}
-                }}
+                "technical_details": {{
+                    "specific_numbers": ["50GB RAM requirement", "2x performance improvement", "$500 vs $5000 cost"],
+                    "tools_mentioned": ["GGML quantization", "llama.cpp", "RTX 4090", "H100 GPU"],
+                    "performance_data": ["30 tokens/sec on CPU", "4-bit quantization reduces quality by 15%"],
+                    "hardware_specs": ["16GB VRAM minimum", "requires CUDA 11.8+", "works on Apple M1 with 32GB RAM"]
+                }},
+                "cost_analysis": {{
+                    "price_comparisons": ["Consumer GPU $500 vs Enterprise $5000", "Inference cost drops 80%"],
+                    "resource_requirements": ["8GB VRAM for 7B model", "32GB RAM for 13B model unquantized"],
+                    "efficiency_gains": ["10x faster with quantization", "reduces bandwidth by 75%"]
+                }},
+                "implementation_insights": {{
+                    "setup_instructions": ["use --load-in-4bit flag", "install bitsandbytes library", "enable flash attention"],
+                    "configuration_details": ["temperature 0.7 works best", "context length 4096 tokens", "batch size 8 optimal"],
+                    "compatibility_issues": ["breaks on Windows with Python 3.11", "requires gcc 9+ for compilation"]
+                }},
+                "community_consensus": {{
+                    "strong_agreements": ["Quantization essential for consumer hardware", "Quality loss acceptable for most use cases"],
+                    "major_disagreements": ["Some argue 8-bit minimum for production vs others say 4-bit sufficient", "Debate over GGML vs other quantization methods"],
+                    "expert_opinions": ["Production users report 4-bit unusable for reasoning tasks", "Hobbyists find 4-bit adequate for chat"]
+                }},
+                "business_intelligence": {{
+                    "market_trends": ["Consumer AI hardware demand increasing", "Enterprise shifting to cost-effective inference"],
+                    "company_strategies": ["OpenAI pricing pressure from local alternatives", "NVIDIA focusing on inference optimization"],
+                    "competitive_landscape": ["llama.cpp gaining adoption vs commercial APIs", "Hardware vendors optimizing for AI workloads"]
+                }},
+                "success_failure_stories": {{
+                    "working_setups": ["User runs 70B model on RTX 4090 with 4-bit GGML", "Company saves $10k/month switching from API to local"],
+                    "failed_attempts": ["Cannot run 13B model on 8GB VRAM even with quantization", "Quality too poor for customer service chatbot"],
+                    "performance_reports": ["Achieves 15 tokens/sec on MacBook Pro M2", "Inference latency 200ms vs 2000ms for API calls"]
+                }},
+                "specific_recommendations": {{
+                    "actionable_advice": ["Start with 13B 4-bit for testing", "Use offloading for models larger than VRAM", "Monitor temperature under load"],
+                    "what_to_avoid": ["Dont use 2-bit quantization for reasoning", "Avoid running multiple models simultaneously", "Skip quantization if you have 80GB+ VRAM"],
+                    "optimization_tips": ["Enable KV cache offloading", "Use grouped query attention", "Batch similar requests together"]
+                }},
+                "sentiment_summary": "Detailed multi-sentence summary capturing the nuanced discussion with specific examples and concrete details mentioned by the community"
             }}
+            
+            CRITICAL JSON RULES:
+            - NO quotes inside strings (use single quotes or paraphrase)  
+            - NO line breaks inside strings
+            - Keep all technical terms and numbers exact but escape special characters
+            - If information category is not discussed, use empty array []
+            - Focus on extracting maximum concrete information per category
             """
             
             response = self.openai_client.chat.completions.create(
@@ -392,7 +422,7 @@ class CostOptimizedAI:
                     {"role": "system", "content": "You are a discussion analyst. Respond with only valid JSON, no additional text."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=300,  # Reduced token usage
+                max_tokens=800,  # Increased for detailed analysis
                 temperature=0.3,
                 response_format={"type": "json_object"}
             )
@@ -413,44 +443,119 @@ class CostOptimizedAI:
                 print(f"⚠️ JSON parsing error: {e}")
                 print(f"Raw response (first 300 chars): {result[:300]}...")
                 
-                # Try to extract at least the main themes using regex
-                import re
-                try:
-                    themes_match = re.search(r'"main_themes":\s*\[(.*?)\]', result)
-                    if themes_match:
-                        themes_str = themes_match.group(1)
-                        themes = [t.strip().strip('"') for t in themes_str.split(',')]
-                        themes = [t for t in themes if t]  # Remove empty strings
-                    else:
-                        themes = ["Analysis parsing failed"]
-                except:
-                    themes = ["Analysis parsing failed"]
-                
-                # Return fallback structure with extracted themes if possible
+                # Return fallback structure for parsing errors
                 ai_analysis = {
-                    "main_themes": themes,
-                    "agreement_points": ["Unable to parse agreement points"],
-                    "disagreement_points": ["Unable to parse disagreement points"],
-                    "sentiment_summary": "Analysis failed due to JSON parsing error",
-                    "top_comment_summary": "Summary not available due to parsing error",
-                    "structured_sentiment": {
-                        "overall_description": "Could not parse sentiment analysis",
-                        "excitement": {"title": "Excitement", "points": []},
-                        "skepticism": {"title": "Skepticism", "points": []},
-                        "technical": {"title": "Technical Discussion", "points": []}
-                    }
+                    "technical_details": {
+                        "specific_numbers": ["Parsing error - see raw response"],
+                        "tools_mentioned": [],
+                        "performance_data": [],
+                        "hardware_specs": []
+                    },
+                    "cost_analysis": {
+                        "price_comparisons": [],
+                        "resource_requirements": [],
+                        "efficiency_gains": []
+                    },
+                    "implementation_insights": {
+                        "setup_instructions": [],
+                        "configuration_details": [],
+                        "compatibility_issues": []
+                    },
+                    "community_consensus": {
+                        "strong_agreements": [],
+                        "major_disagreements": [],
+                        "expert_opinions": []
+                    },
+                    "business_intelligence": {
+                        "market_trends": [],
+                        "company_strategies": [],
+                        "competitive_landscape": []
+                    },
+                    "success_failure_stories": {
+                        "working_setups": [],
+                        "failed_attempts": [],
+                        "performance_reports": []
+                    },
+                    "specific_recommendations": {
+                        "actionable_advice": [],
+                        "what_to_avoid": [],
+                        "optimization_tips": []
+                    },
+                    "sentiment_summary": "Analysis failed due to JSON parsing error"
                 }
             
             self.api_calls_made += 1
             
+            # Convert detailed analysis to backward-compatible format while preserving rich data
+            technical_details = ai_analysis.get("technical_details", {})
+            cost_analysis = ai_analysis.get("cost_analysis", {})
+            implementation = ai_analysis.get("implementation_insights", {})
+            consensus = ai_analysis.get("community_consensus", {})
+            business = ai_analysis.get("business_intelligence", {})
+            stories = ai_analysis.get("success_failure_stories", {})
+            recommendations = ai_analysis.get("specific_recommendations", {})
+            
+            # Create comprehensive themes from all categories
+            main_themes = []
+            main_themes.extend(technical_details.get("tools_mentioned", [])[:4])  # Include more tools in main themes
+            main_themes.extend(business.get("market_trends", [])[:2])
+            if not main_themes:
+                main_themes = ["Limited discussion with detailed analysis available"]
+            
+            # Combine agreement and disagreement points
+            agreement_points = consensus.get("strong_agreements", [])
+            disagreement_points = consensus.get("major_disagreements", [])
+            
+            # Generate top comment summary if we have comments
+            top_comment_summary = None
+            if comments_data and len(comments_data) > 0:
+                top_comment = comments_data[0]
+                if len(top_comment['text']) > 100:  # Only summarize substantial comments
+                    try:
+                        summary_prompt = f"""
+                        Summarize this top Hacker News comment in 1-2 concise sentences. Focus on the key point or insight the commenter is making.
+                        
+                        Comment by {top_comment['author']}:
+                        {top_comment['text'][:500]}
+                        
+                        Summary (1-2 sentences, focus on main insight):
+                        """
+                        
+                        summary_response = self.openai_client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {"role": "system", "content": "You are a comment summarizer. Create brief, insightful summaries of comments."},
+                                {"role": "user", "content": summary_prompt}
+                            ],
+                            max_tokens=100,
+                            temperature=0.3
+                        )
+                        
+                        top_comment_summary = summary_response.choices[0].message.content.strip()
+                        self.api_calls_made += 1
+                        print(f"✅ Generated top comment summary: {top_comment_summary[:50]}...")
+                        
+                    except Exception as e:
+                        print(f"⚠️ Error generating top comment summary: {e}")
+                        top_comment_summary = None
+
             return {
                 "total_comments_analyzed": len(comments_data),
-                "main_themes": ai_analysis.get("main_themes", ["Analysis failed"]),
-                "agreement_points": ai_analysis.get("agreement_points", []),
-                "disagreement_points": ai_analysis.get("disagreement_points", []),
-                "sentiment_summary": ai_analysis.get("sentiment_summary", "Analysis completed"),
-                "top_comment_summary": ai_analysis.get("top_comment_summary", "Top comment summary not available"),
-                "structured_sentiment": ai_analysis.get("structured_sentiment", {}),
+                "main_themes": main_themes,
+                "agreement_points": agreement_points,
+                "disagreement_points": disagreement_points,
+                "sentiment_summary": ai_analysis.get("sentiment_summary", "Analysis completed with detailed insights"),
+                "top_comment_summary": top_comment_summary,
+                
+                # Preserve all detailed analysis in new fields
+                "detailed_technical_analysis": technical_details,
+                "detailed_cost_analysis": cost_analysis,
+                "detailed_implementation": implementation,
+                "detailed_consensus": consensus,
+                "detailed_business_intelligence": business,
+                "detailed_success_stories": stories,
+                "detailed_recommendations": recommendations,
+                
                 "comment_stats": {
                     "total_comments": len(comments_data),
                     "avg_comment_length": avg_length,

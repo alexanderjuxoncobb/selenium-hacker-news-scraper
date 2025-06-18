@@ -170,7 +170,7 @@ class EnhancedHackerNewsScraper:
         story_data.update({
             "relevance_score": float(confidence_score),  # Convert numpy float32 to Python float
             "relevance_reasoning": reasoning,
-            "ai_refined": 0.3 <= confidence_score <= 0.5
+            "ai_refined": bool(0.3 <= confidence_score <= 0.5)  # Ensure Python bool
         })
         
         return is_relevant
@@ -328,22 +328,77 @@ class EnhancedHackerNewsScraper:
             summary_parts.append("*Article content not accessible or this is a discussion post*")
         summary_parts.append("")
         
-        # Comments analysis
+        # Comments analysis with detailed insights
         if total_comments_analyzed > 0:
-            summary_parts.append("### Discussion Analysis")
+            summary_parts.append("### 💬 Community Discussion Analysis")
             summary_parts.append(f"**Analyzed {total_comments_analyzed} top comments**")
             
-            if themes and themes != ["Limited discussion"]:
-                summary_parts.append(f"**Main themes:** {', '.join(themes)}")
+            # Technical details section
+            tech_details = comments_analysis.get('detailed_technical_analysis', {})
+            if tech_details.get('specific_numbers') or tech_details.get('tools_mentioned'):
+                summary_parts.append("")
+                summary_parts.append("**🔧 Technical Details:**")
+                
+                if tech_details.get('specific_numbers'):
+                    numbers = tech_details['specific_numbers'][:3]  # Show top 3
+                    summary_parts.append(f"• **Metrics:** {', '.join(numbers)}")
+                
+                if tech_details.get('tools_mentioned'):
+                    tools = tech_details['tools_mentioned'][:4]  # Show top 4
+                    summary_parts.append(f"• **Tools/Tech:** {', '.join(tools)}")
+                
+                if tech_details.get('performance_data'):
+                    perf = tech_details['performance_data'][:2]  # Show top 2
+                    summary_parts.append(f"• **Performance:** {', '.join(perf)}")
             
-            summary_parts.append(f"**Community sentiment:** {sentiment}")
+            # Cost analysis section
+            cost_analysis = comments_analysis.get('detailed_cost_analysis', {})
+            if cost_analysis.get('price_comparisons') or cost_analysis.get('efficiency_gains'):
+                summary_parts.append("")
+                summary_parts.append("**💰 Cost Analysis:**")
+                
+                if cost_analysis.get('price_comparisons'):
+                    costs = cost_analysis['price_comparisons'][:2]
+                    summary_parts.append(f"• **Pricing:** {', '.join(costs)}")
+                
+                if cost_analysis.get('efficiency_gains'):
+                    gains = cost_analysis['efficiency_gains'][:2]
+                    summary_parts.append(f"• **Efficiency:** {', '.join(gains)}")
             
-            # Show top comment if available
-            top_comments = comments_analysis.get('top_comments', [])
-            if top_comments:
-                top_comment = top_comments[0]
-                comment_preview = top_comment['text'][:200] + "..." if len(top_comment['text']) > 200 else top_comment['text']
-                summary_parts.append(f"**Top comment by {top_comment['author']}:** {comment_preview}")
+            # Community consensus section
+            consensus = comments_analysis.get('detailed_consensus', {})
+            if consensus.get('strong_agreements') or consensus.get('major_disagreements'):
+                summary_parts.append("")
+                summary_parts.append("**🤝 Community Consensus:**")
+                
+                if consensus.get('strong_agreements'):
+                    agreements = consensus['strong_agreements'][:2]
+                    summary_parts.append(f"• **Agreements:** {', '.join(agreements)}")
+                
+                if consensus.get('major_disagreements'):
+                    disagreements = consensus['major_disagreements'][:2]
+                    summary_parts.append(f"• **Disagreements:** {', '.join(disagreements)}")
+            
+            # Success stories and recommendations
+            stories = comments_analysis.get('detailed_success_stories', {})
+            recommendations = comments_analysis.get('detailed_recommendations', {})
+            
+            if stories.get('working_setups') or recommendations.get('actionable_advice'):
+                summary_parts.append("")
+                summary_parts.append("**✅ Practical Insights:**")
+                
+                if stories.get('working_setups'):
+                    setups = stories['working_setups'][:2]
+                    summary_parts.append(f"• **Working Setups:** {', '.join(setups)}")
+                
+                if recommendations.get('actionable_advice'):
+                    advice = recommendations['actionable_advice'][:2]
+                    summary_parts.append(f"• **Recommendations:** {', '.join(advice)}")
+            
+            # Overall sentiment
+            summary_parts.append("")
+            summary_parts.append(f"**Overall Sentiment:** {sentiment}")
+            
         else:
             summary_parts.append("### Discussion Analysis")
             summary_parts.append("*No comments available for analysis*")
