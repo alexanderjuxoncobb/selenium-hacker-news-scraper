@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""
+Daily Scheduler for Hacker News Scraper
+Runs the scraper at 8:30 AM London time every day
+"""
+
+import schedule
+import time
+import subprocess
+import os
+from datetime import datetime
+import pytz
+
+def run_daily_scraper():
+    """Run the daily scraping job"""
+    london_tz = pytz.timezone('Europe/London')
+    current_time = datetime.now(london_tz)
+    
+    print(f"🕰️  Starting daily scraper job at {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    
+    try:
+        # Run the scraper
+        result = subprocess.run(['python', 'scraper.py'], 
+                              capture_output=True, 
+                              text=True, 
+                              cwd=os.path.dirname(os.path.abspath(__file__)))
+        
+        if result.returncode == 0:
+            print("✅ Daily scraping completed successfully!")
+            print("📊 Scraper output:")
+            print(result.stdout)
+        else:
+            print("❌ Error during daily scraping:")
+            print(result.stderr)
+            
+    except Exception as e:
+        print(f"❌ Failed to run scraper: {str(e)}")
+
+def main():
+    """Main scheduler function"""
+    print("🤖 Hacker News Daily Scraper Scheduler Starting...")
+    print("⏰ Scheduled to run at 8:30 AM London time every day")
+    
+    # Schedule the job for 8:30 AM London time
+    schedule.every().day.at("08:30").do(run_daily_scraper)
+    
+    # For testing - uncomment to run every minute
+    # schedule.every().minute.do(run_daily_scraper)
+    
+    print("📅 Scheduler is running. Press Ctrl+C to stop.")
+    
+    try:
+        while True:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+    except KeyboardInterrupt:
+        print("\n⏹️  Scheduler stopped by user.")
+
+if __name__ == "__main__":
+    main()
