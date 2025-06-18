@@ -54,7 +54,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <span class="ml-3 text-sm text-gray-500">{{ "%.2f"|format(interest.weight) }}</span>
+                            <div class="ml-3 flex items-center space-x-2">
+                                <span class="text-sm text-gray-500">{{ "%.2f"|format(interest.weight) }}</span>
+                                <button onclick="deleteInterest({{ interest.id }}, '{{ interest.keyword }}')" 
+                                        class="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                                        title="Delete interest">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
                         {% endfor %}
@@ -169,5 +176,41 @@ document.getElementById('category').addEventListener('change', function() {
         weightInput.value = '0.3';
     }
 });
+
+// Delete interest function
+async function deleteInterest(interestId, keyword) {
+    // Use the confirmation modal from base.html
+    const confirmed = await showConfirmModal(
+        `Are you sure you want to delete the interest "${keyword}"? This will affect how stories are filtered for relevance.`,
+        'Delete Interest',
+        'fa-trash',
+        'text-red-500'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/interests/${interestId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'deleted') {
+            // Show success message
+            showToast(`Interest "${keyword}" deleted successfully`, 'success');
+            
+            // Reload the page to update the display
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.message || 'Failed to delete interest');
+        }
+    } catch (error) {
+        console.error('Error deleting interest:', error);
+        showToast('Failed to delete interest', 'error');
+    }
+}
 </script>
 {% endblock %}

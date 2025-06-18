@@ -1,15 +1,27 @@
-# 🤖 AI-Powered Hacker News Daily Scraper
+# 🤖 Enhanced AI-Powered Hacker News Daily Scraper
 
-An intelligent Python-based web scraper that automatically extracts the top 30 Hacker News stories daily, uses AI to analyze their relevance based on your interests, generates detailed article summaries, and provides comprehensive insights from community discussions.
+An intelligent Python-based web scraper with web dashboard, cost-optimized AI pipeline, email notifications, and business intelligence extraction. Automatically scrapes top 30 Hacker News stories daily, analyzes relevance with 75% cost savings through local embeddings, and provides actionable insights through a modern web interface.
 
 ## ✨ Key Features
 
-- **🧠 AI-Powered Relevance Filtering**: Uses OpenAI GPT-4o-mini to intelligently filter stories based on your personal interests
-- **📄 Smart Article Summarization**: Generates detailed, specific summaries with concrete details, quotes, and technical insights
-- **💬 Advanced Comment Analysis**: AI-powered theme extraction, sentiment analysis, and quote extraction from HN discussions
-- **⏰ Daily Automation**: Runs automatically at 8:30 AM London time every day
-- **📊 Rich Output**: Generates both structured JSON data and beautifully formatted markdown email digests
-- **🔧 Fully Customizable**: Easy to modify interests, scheduling, and analysis parameters
+### **🚀 Enhanced Pipeline (NEW)**
+- **💰 75% Cost Reduction**: Local embeddings + selective OpenAI usage
+- **🌐 Web Dashboard**: Modern FastAPI interface with mobile support
+- **📧 Email Notifications**: Rich HTML emails with dashboard links
+- **🔍 Business Intelligence**: Actionable insights and market signals
+- **📊 User Analytics**: Interaction tracking and personalized learning
+
+### **🧠 AI & Analysis**
+- **🧠 Cost-Optimized AI Filtering**: Local embeddings with GPT-4o-mini refinement
+- **📄 Smart Article Summarization**: Cached summaries with detailed technical insights
+- **💬 Advanced Comment Analysis**: Deep technical extraction and sentiment analysis
+- **🎯 Actionable Insights**: Market signals, investment opportunities, competitive intelligence
+
+### **🛠️ Platform Features**
+- **⏰ Daily Automation**: Runs automatically at 8:30 AM London time
+- **📱 Mobile-Responsive**: Works perfectly on phones, tablets, and desktop
+- **💾 Data Persistence**: SQLite database with full history and analytics
+- **🔧 Fully Customizable**: Web-based interest management and settings
 
 ## 🚀 Quick Start
 
@@ -28,20 +40,29 @@ cp .env.example .env
 # Edit .env and add your OpenAI API key
 ```
 
-### 3. Test the Scraper
+### 3. Test the Enhanced System
 ```bash
-# Quick test (single story, basic info)
-python quick_test.py
+# Test cost-optimized AI pipeline
+python ai_pipeline.py
 
-# Test with full AI processing (3 stories)
-python scraper.py test
+# Test enhanced scraper (3 stories with full features)
+python enhanced_scraper.py test
 
-# Full daily scraping (30 stories with AI analysis)
-python scraper.py
+# Test email notifications (requires .env setup)
+python email_sender.py
+
+# Start web dashboard
+cd dashboard
+python app.py
+# Visit http://localhost:8000
 ```
 
-### 4. Start Daily Scheduler
+### 4. Run Full Enhanced Pipeline
 ```bash
+# Full enhanced daily scraping (30 stories with all features)
+python enhanced_scraper.py
+
+# Start daily automation
 python scheduler.py
 ```
 
@@ -116,22 +137,31 @@ Beautifully formatted markdown including:
 - Direct links to articles and HN discussions
 - Community sentiment insights
 
-## 🛠️ Project Structure
+## 🛠️ Enhanced Project Structure
 
 ```
 selenium-hacker-news-scraper/
-├── scraper.py              # Main scraping logic with AI integration
-├── scheduler.py            # Daily scheduling system
-├── quick_test.py          # Simple test script
-├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
-├── .gitignore           # Git ignore patterns
-└── README.md           # This file
+├── enhanced_scraper.py     # 🚀 Main enhanced scraper (START HERE)
+├── ai_pipeline.py          # 💰 Cost-optimized AI with local embeddings  
+├── email_sender.py         # 📧 Email notification system
+├── actionable_insights.py  # 🔍 Business intelligence analyzer
+├── scheduler.py            # ⏰ Daily automation
+├── dashboard/              # 🌐 Web Dashboard
+│   ├── app.py             #     FastAPI web application
+│   ├── database.py        #     Database models & operations
+│   ├── templates/         #     HTML templates
+│   └── static/           #     CSS, JS, images
+├── scraper.py             # 📜 Original scraper (legacy)
+├── requirements.txt       # 📦 All dependencies
+├── .env.example          # 🔧 Environment variables template
+└── CLAUDE.md            # 📋 Detailed project documentation
 
 Generated Files:
-├── hn_scrape_*.json    # Daily scraping data
-├── daily_digest_*.md   # Email digest files
-└── test_digest_*.md    # Test output files
+├── hn_scraper.db          # 💾 SQLite database
+├── .ai_cache/            # 🧠 AI caching directory
+├── enhanced_hn_scrape_*.json  # 📊 Enhanced scraping data
+├── enhanced_digest_*.md   # 📧 Email digest files
+└── test_*.json           # 🧪 Test output files
 ```
 
 ## 🔧 Configuration
@@ -174,20 +204,27 @@ python scraper.py test
 python -c "from scraper import HackerNewsScraper; s = HackerNewsScraper(); print(s.scrape_top_stories(1))"
 ```
 
-## 📦 Dependencies
+## 📦 Enhanced Dependencies
 
-**Core Dependencies:**
+**Core AI & Scraping:**
 - `selenium==4.33.0` - Web scraping automation
 - `openai==1.88.0` - AI integration for analysis
+- `sentence-transformers==4.1.0` - Local embeddings (NEW)
+- `scikit-learn==1.7.0` - Machine learning utilities (NEW)
 - `beautifulsoup4==4.13.4` - HTML parsing
 - `requests==2.32.4` - HTTP requests
+
+**Web Dashboard & API:**
+- `fastapi==0.104.1` - Modern web framework (NEW)
+- `uvicorn[standard]==0.24.0` - ASGI server (NEW)
+- `jinja2==3.1.4` - Template engine (NEW)
+- `python-multipart==0.0.20` - Form handling (NEW)
+
+**Automation & Utilities:**
 - `schedule==1.2.2` - Daily scheduling
 - `python-dotenv==1.1.0` - Environment variables
 - `pytz==2025.2` - Timezone handling
-
-**Additional Dependencies:**
 - `webdriver-manager==4.0.2` - Chrome driver management
-- Various supporting packages for web automation
 
 ## 🌍 Deployment Options
 
@@ -207,9 +244,24 @@ python scheduler.py
 2. **DigitalOcean**: Deploy on a droplet with cron scheduling
 3. **AWS EC2**: Set up instance with CloudWatch scheduling
 
-### Environment Variables for Deployment
+### Enhanced Environment Variables
 ```bash
+# Required
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Email Notifications (Optional)
+EMAIL_USER=your_email@gmail.com
+EMAIL_APP_PASSWORD=your_gmail_app_password
+RECIPIENT_EMAIL=recipient@example.com
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+
+# Dashboard Configuration (Optional)
+DASHBOARD_BASE_URL=http://localhost:8000
+SECRET_KEY=your-secret-key-for-sessions
+
+# Database (Optional - defaults to SQLite)
+DATABASE_URL=sqlite:///hn_scraper.db
 ```
 
 ## 🎯 Use Cases
@@ -220,14 +272,23 @@ OPENAI_API_KEY=your_openai_api_key_here
 - **Content Curation**: Create curated content for blogs or newsletters
 - **Market Research**: Track startup and technology discussions
 
-## 🚧 Future Enhancements
+## 🎯 Completed Enhancements
 
-- **Email Integration**: SMTP setup for automatic email delivery
-- **Database Storage**: PostgreSQL for historical data and trend analysis
-- **Web Dashboard**: Interactive interface for viewing results
+- **✅ Email Integration**: Full SMTP setup with rich HTML templates
+- **✅ Database Storage**: SQLite with option to upgrade to PostgreSQL
+- **✅ Web Dashboard**: Complete FastAPI interface with mobile support
+- **✅ Advanced Filtering**: Cost-optimized AI with local embeddings
+- **✅ User Analytics**: Interaction tracking and personalized learning
+- **✅ Business Intelligence**: Actionable insights and market analysis
+
+## 🚧 Future Possibilities
+
 - **Slack/Discord Integration**: Post digests to team channels
-- **Advanced Filtering**: More sophisticated AI-powered relevance scoring
 - **Multi-source Support**: Expand beyond Hacker News to other tech sites
+- **Mobile App**: React Native or Flutter mobile application
+- **Advanced ML**: Automated interest learning from user behavior
+- **API Integration**: Connect with productivity tools (Notion, Obsidian)
+- **Export Features**: PDF reports, RSS feeds, webhook integrations
 
 ## 🤝 Contributing
 

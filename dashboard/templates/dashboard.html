@@ -301,7 +301,7 @@
                         </button>
                         <button onclick="logInteraction({{ story.id }}, 'save', this)" 
                                 data-story-id="{{ story.id }}" data-interaction="save"
-                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-transparent">
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-orange-100 text-orange-700 hover:bg-orange-200 border border-transparent">
                             <i class="fas fa-bookmark mr-1"></i>Save
                         </button>
                     </div>
@@ -409,6 +409,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.status === 'success') {
                 const hasInteraction = data.interactions.some(i => i.interaction_type === interactionType);
                 if (hasInteraction) {
+                    // Update both visual state and internal tracking
+                    interactionStates[`${storyId}-${interactionType}`] = true;
                     updateButtonState(button, interactionType, true);
                 }
             }

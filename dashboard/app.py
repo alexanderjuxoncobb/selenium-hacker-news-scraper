@@ -223,6 +223,19 @@ async def update_interests(
     db.update_interest_weight(keyword, weight, category)
     return RedirectResponse(url="/interests", status_code=303)
 
+@app.delete("/api/interests/{interest_id}")
+async def delete_interest(interest_id: int):
+    """Delete an interest weight"""
+    try:
+        success = db.delete_interest_weight(interest_id)
+        if success:
+            return {"status": "deleted", "interest_id": interest_id, "message": "Interest deleted successfully"}
+        else:
+            return {"status": "error", "message": "Interest not found"}
+    except Exception as e:
+        print(f"❌ Error deleting interest: {e}")
+        return {"status": "error", "message": str(e)}
+
 @app.get("/analytics", response_class=HTMLResponse)
 async def analytics_page(request: Request):
     """Analytics and trends page"""

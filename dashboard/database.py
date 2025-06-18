@@ -412,6 +412,16 @@ class DatabaseManager:
                 for row in cursor.fetchall()
             ]
     
+    def delete_interest_weight(self, interest_id: int):
+        """Delete an interest weight by ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM interest_weights WHERE id = ?
+            """, (interest_id,))
+            conn.commit()
+            return cursor.rowcount > 0  # Returns True if a row was deleted
+    
     def close(self):
         """Close database connection (SQLite auto-closes, but good practice)"""
         pass

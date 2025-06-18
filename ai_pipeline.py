@@ -36,8 +36,54 @@ class CostOptimizedAI:
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
         
-        # User interests for local filtering
-        self.user_interests = {
+        # Load user interests from database (fallback to defaults if database not available)
+        self.user_interests = self._load_interests_from_database()
+        
+        # Pre-compute interest embeddings for fast comparison
+        self._compute_interest_embeddings()
+        
+        # Load cached article summaries
+        self.article_cache = self._load_article_cache()
+        
+        # Cost tracking
+        self.api_calls_saved = 0
+        self.api_calls_made = 0
+    
+    def _load_interests_from_database(self) -> Dict:
+        """Load user interests from database, fallback to defaults if not available"""
+        try:
+            # Import here to avoid circular imports
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), 'dashboard'))
+            from database import DatabaseManager
+            
+            # Try to load from database
+            db = DatabaseManager("hn_scraper.db")
+            interest_weights = db.get_interest_weights()
+            
+            if not interest_weights:
+                print("⚠️ No interests found in database, using defaults")
+                return self._get_default_interests()
+            
+            # Group interests by category
+            user_interests = {"high_priority": [], "medium_priority": [], "low_priority": []}
+            for interest in interest_weights:
+                category_key = f"{interest.category}_priority"
+                if category_key in user_interests:
+                    user_interests[category_key].append(interest.keyword)
+            
+            print(f"✅ Loaded {len(interest_weights)} interests from database")
+            return user_interests
+            
+        except Exception as e:
+            print(f"⚠️ Could not load interests from database: {e}")
+            print("   Using default interests")
+            return self._get_default_interests()
+    
+    def _get_default_interests(self) -> Dict:
+        """Get default interests as fallback"""
+        return {
             "high_priority": [
                 "artificial intelligence", "AI", "machine learning", "ML", "AI agents",
                 "tech startups", "software development", "programming", "mathematics",
@@ -51,16 +97,6 @@ class CostOptimizedAI:
                 "music"
             ]
         }
-        
-        # Pre-compute interest embeddings for fast comparison
-        self._compute_interest_embeddings()
-        
-        # Load cached article summaries
-        self.article_cache = self._load_article_cache()
-        
-        # Cost tracking
-        self.api_calls_saved = 0
-        self.api_calls_made = 0
     
     def _compute_interest_embeddings(self):
         """Pre-compute embeddings for user interests"""
@@ -82,6 +118,13 @@ class CostOptimizedAI:
             }
         
         print("✅ Interest embeddings computed")
+    
+    def refresh_interests(self):
+        """Reload interests from database and recompute embeddings"""
+        print("🔄 Refreshing interests from database...")
+        self.user_interests = self._load_interests_from_database()
+        self._compute_interest_embeddings()
+        print("✅ Interests refreshed successfully")
     
     def _load_article_cache(self) -> Dict:
         """Load cached article summaries"""

@@ -112,7 +112,7 @@
             const bgColor = type === 'success' ? 'bg-green-500' : 
                            type === 'error' ? 'bg-red-500' : 
                            type === 'not_relevant' ? 'bg-red-500' :
-                           type === 'save' ? 'bg-yellow-500' :
+                           type === 'save' ? 'bg-hn-orange' :
                            type === 'relevant' ? 'bg-green-500' : 'bg-blue-500';
             
             toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full opacity-0`;
@@ -140,15 +140,56 @@
             }, 3000);
         }
 
-        // Log story interactions with feedback
+        // Track current interaction states
+        const interactionStates = {};
+
+        // Log story interactions with proper toggling
         function logInteraction(storyId, interactionType, buttonElement = null) {
+            if (!buttonElement) return;
+            
+            // Check current state
+            const currentState = interactionStates[`${storyId}-${interactionType}`] || false;
+            const newState = !currentState;
+            
             // Show loading state
-            if (buttonElement) {
-                const originalContent = buttonElement.innerHTML;
-                buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Loading...';
-                buttonElement.disabled = true;
+            const originalContent = buttonElement.innerHTML;
+            buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Loading...';
+            buttonElement.disabled = true;
+            
+            // If toggling off, remove the interaction
+            if (!newState) {
+                fetch(`/api/interaction/${storyId}/${interactionType}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'removed') {
+                        // Update state
+                        interactionStates[`${storyId}-${interactionType}`] = false;
+                        updateButtonState(buttonElement, interactionType, false);
+                        
+                        // Show appropriate message
+                        const messages = {
+                            'thumbs_up': { message: 'Relevance feedback removed', type: 'success' },
+                            'thumbs_down': { message: 'Relevance feedback removed', type: 'success' },
+                            'save': { message: 'Story unsaved', type: 'success' }
+                        };
+                        const toastConfig = messages[interactionType] || { message: 'Action removed!', type: 'success' };
+                        showToast(toastConfig.message, toastConfig.type);
+                    } else {
+                        throw new Error(data.message || 'Failed to remove interaction');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Failed to update interaction', 'error');
+                    buttonElement.innerHTML = originalContent;
+                    buttonElement.disabled = false;
+                });
+                return;
             }
             
+            // Adding interaction
             const formData = new FormData();
             formData.append('interaction_type', interactionType);
             
@@ -159,12 +200,22 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'logged') {
-                    // Update button state
-                    if (buttonElement) {
-                        updateButtonState(buttonElement, interactionType, true);
+                    // Update state
+                    interactionStates[`${storyId}-${interactionType}`] = true;
+                    updateButtonState(buttonElement, interactionType, true);
+                    
+                    // For thumbs up/down, also clear the opposite state if set
+                    if (interactionType === 'thumbs_up') {
+                        interactionStates[`${storyId}-thumbs_down`] = false;
+                        const downButton = document.querySelector(`[data-story-id="${storyId}"][data-interaction="thumbs_down"]`);
+                        if (downButton) updateButtonState(downButton, 'thumbs_down', false);
+                    } else if (interactionType === 'thumbs_down') {
+                        interactionStates[`${storyId}-thumbs_up`] = false;
+                        const upButton = document.querySelector(`[data-story-id="${storyId}"][data-interaction="thumbs_up"]`);
+                        if (upButton) updateButtonState(upButton, 'thumbs_up', false);
                     }
                     
-                    // Show success message with appropriate color
+                    // Show success message
                     const messages = {
                         'thumbs_up': { message: 'Marked as relevant! 👍', type: 'relevant' },
                         'thumbs_down': { message: 'Marked as not relevant 👎', type: 'not_relevant' },
@@ -179,11 +230,8 @@
             .catch(error => {
                 console.error('Error:', error);
                 showToast('Failed to save interaction', 'error');
-                
-                // Reset button if there was an error
-                if (buttonElement) {
-                    buttonElement.disabled = false;
-                }
+                buttonElement.innerHTML = originalContent;
+                buttonElement.disabled = false;
             });
         }
 
@@ -203,8 +251,8 @@
                     text: 'Not Relevant'
                 },
                 'save': {
-                    active: 'bg-yellow-500 text-white border-yellow-500',
-                    inactive: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+                    active: 'bg-hn-orange text-white border-hn-orange',
+                    inactive: 'bg-orange-100 text-orange-700 hover:bg-orange-200',
                     icon: 'fa-bookmark',
                     text: 'Save'
                 }
