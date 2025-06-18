@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}No Data Available - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="text-center py-12">
+    <div class="max-w-md mx-auto">
+        <i class="fas fa-database text-gray-400 text-6xl mb-6"></i>
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">No Data Available</h1>
+        
+        {% if target_date %}
+        <p class="text-gray-600 mb-6">
+            No scraped data found for <strong>{{ target_date }}</strong>.
+        </p>
+        
+        {% if available_dates %}
+        <div class="mb-6">
+            <p class="text-sm text-gray-500 mb-3">Available dates:</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                {% for date in available_dates[:10] %}
+                <a href="/dashboard/{{ date }}" 
+                   class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-hn-orange text-white hover:bg-orange-600">
+                    {{ date }}
+                </a>
+                {% endfor %}
+                {% if available_dates|length > 10 %}
+                <span class="text-gray-500 text-sm">... and {{ available_dates|length - 10 }} more</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <p class="text-gray-600 mb-6">
+            No scraped data has been imported yet. The scraper needs to run at least once to generate data.
+        </p>
+        {% endif %}
+        
+        <div class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-medium text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Getting Started
+                </h3>
+                <div class="text-sm text-blue-800 text-left space-y-2">
+                    <p>1. Run the scraper manually: <code class="bg-blue-100 px-2 py-1 rounded">python scraper.py</code></p>
+                    <p>2. Or start the daily scheduler: <code class="bg-blue-100 px-2 py-1 rounded">python scheduler.py</code></p>
+                    <p>3. The dashboard will automatically import and display the data</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <a href="/" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-refresh mr-2"></i>
+                    Refresh
+                </a>
+                <a href="/interests" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+                    <i class="fas fa-cog mr-2"></i>
+                    Configure Interests
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

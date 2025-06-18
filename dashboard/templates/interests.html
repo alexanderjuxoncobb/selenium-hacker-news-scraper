@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Interest Management - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">
+            ❤️ Interest Management
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">
+            Configure your interests to improve story relevance filtering
+        </p>
+    </div>
+
+    <!-- Current Interests -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Current Interest Weights</h2>
+            <p class="text-sm text-gray-500">Higher weights (closer to 1.0) mean more relevant to you</p>
+        </div>
+        <div class="px-6 py-4">
+            {% if interest_weights %}
+            <div class="space-y-4">
+                {% for category in ['high', 'medium', 'low'] %}
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                        {{ category|title }} Priority
+                        {% if category == 'high' %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
+                            Most Important
+                        </span>
+                        {% elif category == 'medium' %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
+                            Moderate
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ml-2">
+                            Low Priority
+                        </span>
+                        {% endif %}
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {% for interest in interest_weights %}
+                        {% if interest.category == category %}
+                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                            <div class="flex-1">
+                                <span class="text-sm font-medium text-gray-900">{{ interest.keyword }}</span>
+                                <div class="mt-1">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-hn-orange h-2 rounded-full" style="width: {{ (interest.weight * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="ml-3 text-sm text-gray-500">{{ "%.2f"|format(interest.weight) }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No interest weights configured yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add New Interest -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Add New Interest</h2>
+            <p class="text-sm text-gray-500">Add keywords or phrases that interest you</p>
+        </div>
+        <div class="px-6 py-4">
+            <form action="/interests/update" method="post" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="keyword" class="block text-sm font-medium text-gray-700">Keyword/Phrase</label>
+                        <input type="text" name="keyword" id="keyword" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm"
+                               placeholder="e.g., machine learning">
+                    </div>
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Priority</label>
+                        <select name="category" id="category" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="low">Low Priority</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Weight (0.0 - 1.0)</label>
+                        <input type="number" name="weight" id="weight" min="0" max="1" step="0.1" value="1.0" required
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hn-orange">
+                        <i class="fas fa-plus mr-2"></i>Add Interest
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Interaction Statistics -->
+    {% if interaction_stats %}
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Your Reading Behavior (Last 30 Days)</h2>
+            <p class="text-sm text-gray-500">This data helps improve relevance filtering</p>
+        </div>
+        <div class="px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for interaction_type, stats in interaction_stats.items() %}
+                <div class="text-center p-4 border border-gray-200 rounded-lg">
+                    <div class="text-2xl mb-2">
+                        {% if interaction_type == 'click' %}🖱️
+                        {% elif interaction_type == 'thumbs_up' %}👍
+                        {% elif interaction_type == 'thumbs_down' %}👎
+                        {% elif interaction_type == 'save' %}📑
+                        {% else %}📊
+                        {% endif %}
+                    </div>
+                    <div class="text-lg font-semibold text-gray-900">{{ stats.count }}</div>
+                    <div class="text-sm text-gray-500">{{ interaction_type.replace('_', ' ').title() }}</div>
+                    {% if stats.avg_duration > 0 %}
+                    <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tips -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="font-medium text-blue-900 mb-2">
+            <i class="fas fa-lightbulb mr-1"></i>
+            Tips for Better Relevance
+        </h3>
+        <ul class="text-sm text-blue-800 space-y-1">
+            <li>• Use specific terms like "React hooks" instead of just "React"</li>
+            <li>• Include company names you're interested in: "OpenAI", "Google", "Apple"</li>
+            <li>• Add technology names: "Kubernetes", "PostgreSQL", "Python"</li>
+            <li>• Use thumbs up/down on stories to train the system</li>
+            <li>• Higher weights (0.8-1.0) for your most important interests</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// Auto-set weight based on category selection
+document.getElementById('category').addEventListener('change', function() {
+    const weightInput = document.getElementById('weight');
+    const category = this.value;
+    
+    if (category === 'high') {
+        weightInput.value = '1.0';
+    } else if (category === 'medium') {
+        weightInput.value = '0.6';
+    } else if (category === 'low') {
+        weightInput.value = '0.3';
+    }
+});
+</script>
+{% endblock %}
