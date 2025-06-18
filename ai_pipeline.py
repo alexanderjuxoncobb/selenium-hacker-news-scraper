@@ -350,17 +350,39 @@ class CostOptimizedAI:
             all_comments = "\n\n".join(comments_text)
             
             prompt = f"""
-            Analyze these {len(top_comments)} Hacker News comments. You MUST respond with valid JSON only.
+            Analyze these {len(top_comments)} Hacker News comments and respond with ONLY valid JSON.
 
             COMMENTS:
             {all_comments}
 
-            Extract specific insights with concrete details:
+            CRITICAL: 
+            - NO quotes inside strings (use single quotes or paraphrase)
+            - NO line breaks inside strings
+            - NO special characters that break JSON
+            - Keep all text simple and clean
+
+            Return this exact JSON structure:
             {{
-                "main_themes": ["Specific topic 1", "Specific topic 2"],
-                "agreement_points": ["Specific agreement with quote", "Another agreement"],
-                "disagreement_points": ["Specific criticism with quote", "Counter-argument"],
-                "sentiment_summary": "Concrete description mentioning specific concerns or tools discussed"
+                "main_themes": ["topic1", "topic2"],
+                "agreement_points": ["agreement1", "agreement2"],
+                "disagreement_points": ["criticism1", "criticism2"],
+                "sentiment_summary": "brief description without quotes",
+                "top_comment_summary": "2-3 sentence summary without quotes or special chars",
+                "structured_sentiment": {{
+                    "overall_description": "brief sentiment description",
+                    "excitement": {{
+                        "title": "Excitement",
+                        "points": ["point1", "point2"]
+                    }},
+                    "skepticism": {{
+                        "title": "Skepticism", 
+                        "points": ["concern1", "concern2"]
+                    }},
+                    "technical": {{
+                        "title": "Technical Discussion",
+                        "points": ["tech point1", "tech point2"]
+                    }}
+                }}
             }}
             """
             
@@ -376,7 +398,49 @@ class CostOptimizedAI:
             )
             
             result = response.choices[0].message.content.strip()
-            ai_analysis = json.loads(result)
+            
+            # Clean up common JSON issues
+            if result.startswith('```json'):
+                result = result.replace('```json', '').replace('```', '').strip()
+            
+            # Additional cleanup for common issues
+            result = result.replace('\n', ' ').replace('\r', ' ')  # Remove line breaks
+            result = result.replace('""', '"').replace('\\', '')   # Fix double quotes and escapes
+            
+            try:
+                ai_analysis = json.loads(result)
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error: {e}")
+                print(f"Raw response (first 300 chars): {result[:300]}...")
+                
+                # Try to extract at least the main themes using regex
+                import re
+                try:
+                    themes_match = re.search(r'"main_themes":\s*\[(.*?)\]', result)
+                    if themes_match:
+                        themes_str = themes_match.group(1)
+                        themes = [t.strip().strip('"') for t in themes_str.split(',')]
+                        themes = [t for t in themes if t]  # Remove empty strings
+                    else:
+                        themes = ["Analysis parsing failed"]
+                except:
+                    themes = ["Analysis parsing failed"]
+                
+                # Return fallback structure with extracted themes if possible
+                ai_analysis = {
+                    "main_themes": themes,
+                    "agreement_points": ["Unable to parse agreement points"],
+                    "disagreement_points": ["Unable to parse disagreement points"],
+                    "sentiment_summary": "Analysis failed due to JSON parsing error",
+                    "top_comment_summary": "Summary not available due to parsing error",
+                    "structured_sentiment": {
+                        "overall_description": "Could not parse sentiment analysis",
+                        "excitement": {"title": "Excitement", "points": []},
+                        "skepticism": {"title": "Skepticism", "points": []},
+                        "technical": {"title": "Technical Discussion", "points": []}
+                    }
+                }
+            
             self.api_calls_made += 1
             
             return {
@@ -385,6 +449,8 @@ class CostOptimizedAI:
                 "agreement_points": ai_analysis.get("agreement_points", []),
                 "disagreement_points": ai_analysis.get("disagreement_points", []),
                 "sentiment_summary": ai_analysis.get("sentiment_summary", "Analysis completed"),
+                "top_comment_summary": ai_analysis.get("top_comment_summary", "Top comment summary not available"),
+                "structured_sentiment": ai_analysis.get("structured_sentiment", {}),
                 "comment_stats": {
                     "total_comments": len(comments_data),
                     "avg_comment_length": avg_length,
@@ -400,7 +466,9 @@ class CostOptimizedAI:
                 "main_themes": ["AI analysis failed - basic fallback used"],
                 "agreement_points": [f"Discussion with {len(comments_data)} comments"],
                 "disagreement_points": [],
-                "sentiment_summary": f"Analysis error, processed {len(comments_data)} comments"
+                "sentiment_summary": f"Analysis error, processed {len(comments_data)} comments",
+                "top_comment_summary": "Summary not available due to analysis error",
+                "structured_sentiment": {}
             }
     
     def get_cost_report(self) -> Dict:
