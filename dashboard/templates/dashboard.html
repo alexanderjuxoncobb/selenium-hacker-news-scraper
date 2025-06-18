@@ -2,6 +2,8 @@
 
 {% block title %}Dashboard - {{ target_date }} - HN Scraper{% endblock %}
 
+{% block nav_dashboard %}text-gray-900{% endblock %}
+
 {% block content %}
 <div class="px-4 sm:px-0">
     <!-- Header with date navigation -->
@@ -141,6 +143,19 @@
                 </div>
                 {% endif %}
 
+                <!-- Personal Notes (if any) -->
+                <div id="story-notes-{{ story.id }}" class="mb-4" style="display: none;">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">📝 Your Notes</h4>
+                    <div class="bg-gray-50 border border-gray-200 rounded-md p-3">
+                        <p id="story-notes-text-{{ story.id }}" class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+                        <div class="mt-2 pt-2 border-t border-gray-200">
+                            <a href="/saved" class="text-xs text-hn-orange hover:text-orange-600 font-medium">
+                                View in Saved Stories to edit →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Comments Analysis -->
                 {% if story.comments_analysis and story.comments_analysis.total_comments_analyzed > 0 %}
                 <div class="border-t pt-4">
@@ -261,18 +276,11 @@
                     </p>
                     {% endif %}
 
-                    <!-- Top Comment Summary with consistent spacing -->
+                    <!-- Top Comment Summary (AI-generated only) -->
                     {% if story.comments_analysis.top_comment_summary %}
                     <div class="mt-3 bg-gray-50 rounded-md p-3">
                         <p class="text-xs font-medium text-gray-500 mb-1">Top Comment Summary{% if story.comments_analysis.top_comments and story.comments_analysis.top_comments|length > 0 %} (by {{ story.comments_analysis.top_comments[0].author }}){% endif %}:</p>
                         <p class="text-sm text-gray-700 italic">{{ story.comments_analysis.top_comment_summary }}</p>
-                    </div>
-                    {% elif story.comments_analysis.top_comments and story.comments_analysis.top_comments|length > 0 %}
-                    <div class="mt-3 bg-gray-50 rounded-md p-3">
-                        <p class="text-xs font-medium text-gray-500 mb-1">Top Comment by {{ story.comments_analysis.top_comments[0].author }}:</p>
-                        <p class="text-sm text-gray-700 italic">
-                            "{{ (story.comments_analysis.top_comments[0].text[:200] + '...') if story.comments_analysis.top_comments[0].text|length > 200 else story.comments_analysis.top_comments[0].text }}"
-                        </p>
                     </div>
                     {% endif %}
                 </div>
@@ -281,16 +289,19 @@
                 <!-- Action Buttons -->
                 <div class="flex items-center justify-between pt-4 border-t">
                     <div class="flex space-x-2">
-                        <button onclick="logInteraction({{ story.id }}, 'thumbs_up')" 
-                                class="inline-flex items-center px-3 py-1 rounded-md text-sm bg-green-100 text-green-700 hover:bg-green-200">
+                        <button onclick="logInteraction({{ story.id }}, 'thumbs_up', this)" 
+                                data-story-id="{{ story.id }}" data-interaction="thumbs_up"
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-green-100 text-green-700 hover:bg-green-200 border border-transparent">
                             <i class="fas fa-thumbs-up mr-1"></i>Relevant
                         </button>
-                        <button onclick="logInteraction({{ story.id }}, 'thumbs_down')" 
-                                class="inline-flex items-center px-3 py-1 rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200">
+                        <button onclick="logInteraction({{ story.id }}, 'thumbs_down', this)" 
+                                data-story-id="{{ story.id }}" data-interaction="thumbs_down"
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 border border-transparent">
                             <i class="fas fa-thumbs-down mr-1"></i>Not Relevant
                         </button>
-                        <button onclick="logInteraction({{ story.id }}, 'save')" 
-                                class="inline-flex items-center px-3 py-1 rounded-md text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200">
+                        <button onclick="logInteraction({{ story.id }}, 'save', this)" 
+                                data-story-id="{{ story.id }}" data-interaction="save"
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-transparent">
                             <i class="fas fa-bookmark mr-1"></i>Save
                         </button>
                     </div>
@@ -384,5 +395,42 @@ function toggleAllStories() {
         icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
     }
 }
+
+// Load interaction states and notes on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load interaction states for all buttons
+    document.querySelectorAll('.interaction-btn').forEach(button => {
+        const storyId = button.dataset.storyId;
+        const interactionType = button.dataset.interaction;
+        
+        fetch(`/api/interactions/${storyId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const hasInteraction = data.interactions.some(i => i.interaction_type === interactionType);
+                if (hasInteraction) {
+                    updateButtonState(button, interactionType, true);
+                }
+            }
+        })
+        .catch(console.error);
+    });
+    
+    // Load notes for all stories
+    document.querySelectorAll('[id^="story-notes-"]').forEach(notesDiv => {
+        const storyId = notesDiv.id.replace('story-notes-', '');
+        
+        fetch(`/api/story/${storyId}/notes`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.notes && data.notes.trim().length > 0) {
+                const notesTextElement = document.getElementById(`story-notes-text-${storyId}`);
+                notesTextElement.textContent = data.notes;
+                notesDiv.style.display = 'block';
+            }
+        })
+        .catch(console.error);
+    });
+});
 </script>
 {% endblock %}

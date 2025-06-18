@@ -32,13 +32,16 @@
                         </h1>
                     </div>
                     <div class="hidden md:ml-6 md:flex md:space-x-8">
-                        <a href="/" class="text-gray-900 hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/" class="nav-link {% block nav_dashboard %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-home mr-1"></i>Dashboard
                         </a>
-                        <a href="/interests" class="text-gray-500 hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/interests" class="nav-link {% block nav_interests %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-heart mr-1"></i>Interests
                         </a>
-                        <a href="/analytics" class="text-gray-500 hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/saved" class="nav-link {% block nav_saved %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                            <i class="fas fa-bookmark mr-1"></i>Saved
+                        </a>
+                        <a href="/analytics" class="nav-link {% block nav_analytics %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-chart-line mr-1"></i>Analytics
                         </a>
                     </div>
@@ -67,17 +70,166 @@
         </div>
     </footer>
 
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <i id="modal-icon" class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 id="modal-title" class="text-lg font-medium text-gray-900">Confirm Action</h3>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <p id="modal-message" class="text-sm text-gray-600"></p>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button id="modal-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hn-orange">
+                            Cancel
+                        </button>
+                        <button id="modal-confirm" class="px-4 py-2 text-sm font-medium text-white bg-hn-orange border border-transparent rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hn-orange">
+                            Confirm
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript for interactions -->
     <script>
-        // Log story interactions
-        function logInteraction(storyId, interactionType) {
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-green-500' : 
+                           type === 'error' ? 'bg-red-500' : 
+                           type === 'not_relevant' ? 'bg-red-500' :
+                           type === 'save' ? 'bg-yellow-500' :
+                           type === 'relevant' ? 'bg-green-500' : 'bg-blue-500';
+            
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full opacity-0`;
+            toast.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas ${type === 'success' || type === 'relevant' ? 'fa-check' : 
+                                  type === 'error' ? 'fa-exclamation-triangle' : 
+                                  type === 'not_relevant' ? 'fa-thumbs-down' :
+                                  type === 'save' ? 'fa-bookmark' : 'fa-info'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 100);
+            
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => container.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Log story interactions with feedback
+        function logInteraction(storyId, interactionType, buttonElement = null) {
+            // Show loading state
+            if (buttonElement) {
+                const originalContent = buttonElement.innerHTML;
+                buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Loading...';
+                buttonElement.disabled = true;
+            }
+            
             const formData = new FormData();
             formData.append('interaction_type', interactionType);
             
             fetch(`/api/interaction/${storyId}`, {
                 method: 'POST',
                 body: formData
-            }).catch(console.error);
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'logged') {
+                    // Update button state
+                    if (buttonElement) {
+                        updateButtonState(buttonElement, interactionType, true);
+                    }
+                    
+                    // Show success message with appropriate color
+                    const messages = {
+                        'thumbs_up': { message: 'Marked as relevant! 👍', type: 'relevant' },
+                        'thumbs_down': { message: 'Marked as not relevant 👎', type: 'not_relevant' },
+                        'save': { message: 'Story saved! 📑', type: 'save' }
+                    };
+                    const toastConfig = messages[interactionType] || { message: 'Action completed!', type: 'success' };
+                    showToast(toastConfig.message, toastConfig.type);
+                } else {
+                    throw new Error(data.message || 'Failed to log interaction');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to save interaction', 'error');
+                
+                // Reset button if there was an error
+                if (buttonElement) {
+                    buttonElement.disabled = false;
+                }
+            });
+        }
+
+        // Update button visual state
+        function updateButtonState(buttonElement, interactionType, isActive) {
+            const buttonConfig = {
+                'thumbs_up': {
+                    active: 'bg-green-500 text-white border-green-500',
+                    inactive: 'bg-green-100 text-green-700 hover:bg-green-200',
+                    icon: 'fa-thumbs-up',
+                    text: 'Relevant'
+                },
+                'thumbs_down': {
+                    active: 'bg-red-500 text-white border-red-500',
+                    inactive: 'bg-red-100 text-red-700 hover:bg-red-200',
+                    icon: 'fa-thumbs-down',
+                    text: 'Not Relevant'
+                },
+                'save': {
+                    active: 'bg-yellow-500 text-white border-yellow-500',
+                    inactive: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+                    icon: 'fa-bookmark',
+                    text: 'Save'
+                }
+            };
+            
+            const config = buttonConfig[interactionType];
+            if (!config) return;
+            
+            buttonElement.disabled = false;
+            
+            // Remove old classes
+            buttonElement.className = buttonElement.className
+                .replace(/bg-\w+-\d+/g, '')
+                .replace(/text-\w+-\d+/g, '')
+                .replace(/border-\w+-\d+/g, '')
+                .replace(/hover:bg-\w+-\d+/g, '');
+            
+            // Add new classes
+            const classes = isActive ? config.active : config.inactive;
+            buttonElement.className += ' ' + classes;
+            
+            // Update content
+            const iconClass = isActive && interactionType === 'save' ? 'fa-bookmark-solid' : config.icon;
+            const text = isActive && interactionType === 'save' ? 'Saved' : config.text;
+            buttonElement.innerHTML = `<i class="fas ${iconClass} mr-1"></i>${text}`;
         }
 
         // Track story clicks
@@ -105,6 +257,56 @@
                 }
             });
         });
+
+        // Custom confirmation modal system
+        function showConfirmModal(message, title = 'Confirm Action', iconClass = 'fa-exclamation-triangle', iconColor = 'text-yellow-500') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmation-modal');
+                const titleElement = document.getElementById('modal-title');
+                const messageElement = document.getElementById('modal-message');
+                const iconElement = document.getElementById('modal-icon');
+                const confirmButton = document.getElementById('modal-confirm');
+                const cancelButton = document.getElementById('modal-cancel');
+                
+                // Set content
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                iconElement.className = `fas ${iconClass} ${iconColor} text-2xl`;
+                
+                // Show modal
+                modal.classList.remove('hidden');
+                
+                // Handle confirmation
+                const handleConfirm = () => {
+                    modal.classList.add('hidden');
+                    confirmButton.removeEventListener('click', handleConfirm);
+                    cancelButton.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+                
+                // Handle cancellation
+                const handleCancel = () => {
+                    modal.classList.add('hidden');
+                    confirmButton.removeEventListener('click', handleConfirm);
+                    cancelButton.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+                
+                // Add event listeners
+                confirmButton.addEventListener('click', handleConfirm);
+                cancelButton.addEventListener('click', handleCancel);
+                
+                // Close on background click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        handleCancel();
+                    }
+                });
+                
+                // Focus confirm button
+                setTimeout(() => confirmButton.focus(), 100);
+            });
+        }
     </script>
 </body>
 </html>

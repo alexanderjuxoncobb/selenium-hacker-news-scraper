@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Stories - HN Scraper{% endblock %}
+
+{% block nav_saved %}text-gray-900{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">
+            📑 Saved Stories
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">
+            {{ total_saved }} stories saved for later reading
+        </p>
+    </div>
+
+    {% if total_saved == 0 %}
+    <!-- Empty State -->
+    <div class="text-center py-12">
+        <i class="fas fa-bookmark text-gray-400 text-4xl mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No Saved Stories Yet</h3>
+        <p class="text-gray-500 mb-4">Stories you save will appear here for easy access later.</p>
+        <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+            <i class="fas fa-home mr-2"></i>Browse Daily Digest
+        </a>
+    </div>
+    {% else %}
+
+    <!-- Saved Stories by Date -->
+    {% for date, stories in stories_by_date.items() %}
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-900">
+                📅 {{ date }}
+            </h2>
+            <a href="/dashboard/{{ date }}" class="text-sm text-hn-orange hover:underline">
+                View full digest →
+            </a>
+        </div>
+        
+        <div class="space-y-6">
+            {% for story in stories %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                <!-- Story Header -->
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-hn-orange text-white text-sm font-bold mr-3">
+                                {{ story.rank }}
+                            </span>
+                            <a href="{{ story.url }}" target="_blank" rel="noopener noreferrer" 
+                               class="story-link hover:text-hn-orange" data-story-id="{{ story.id }}">
+                                {{ story.title }}
+                                <i class="fas fa-external-link-alt ml-1 text-xs"></i>
+                            </a>
+                        </h3>
+                        <div class="flex items-center text-sm text-gray-500 space-x-4">
+                            <span><i class="fas fa-arrow-up mr-1"></i>{{ story.points }} points</span>
+                            <span><i class="fas fa-user mr-1"></i>{{ story.author }}</span>
+                            <span><i class="fas fa-comments mr-1"></i>{{ story.comments_count }} comments</span>
+                            <a href="{{ story.hn_discussion_url }}" target="_blank" rel="noopener noreferrer" 
+                               class="text-hn-orange hover:underline">
+                                <i class="fas fa-external-link-alt mr-1"></i>HN Discussion
+                            </a>
+                            <span class="text-xs text-gray-400">
+                                <i class="fas fa-bookmark mr-1"></i>Saved {{ story.saved_at[:10] }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        {% if story.is_relevant %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Relevant
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Article Summary -->
+                {% if story.article_summary %}
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">📄 Article Summary</h4>
+                    <p class="text-sm text-gray-600 leading-relaxed">{{ story.article_summary }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Personal Notes Section -->
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">📝 Personal Notes</h4>
+                    <div id="notes-{{ story.id }}" class="notes-section">
+                        <!-- View Mode -->
+                        <div id="notes-view-{{ story.id }}" class="notes-view">
+                            <div id="notes-display-{{ story.id }}" onclick="enterEditMode({{ story.id }})" 
+                                 class="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-700 min-h-[80px] whitespace-pre-wrap cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-colors" 
+                                 style="display: none;"></div>
+                            <div id="notes-empty-{{ story.id }}" onclick="enterEditMode({{ story.id }})" 
+                                 class="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-400 min-h-[80px] flex items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-colors">
+                                Click "Add Notes" to add your personal notes about this story
+                            </div>
+                            <div class="mt-2 flex items-center justify-between">
+                                <button id="add-notes-btn-{{ story.id }}" onclick="enterEditMode({{ story.id }})" 
+                                        class="text-sm text-hn-orange hover:text-orange-600 font-medium">
+                                    + Add Notes
+                                </button>
+                                <button id="edit-notes-btn-{{ story.id }}" onclick="enterEditMode({{ story.id }})" 
+                                        style="display: none;"
+                                        class="text-sm text-hn-orange hover:text-orange-600 font-medium">
+                                    ✏️ Edit Notes
+                                </button>
+                                <button id="clear-notes-btn-{{ story.id }}" onclick="clearNotes({{ story.id }})" 
+                                        style="display: none;"
+                                        class="text-xs text-gray-400 hover:text-gray-600">
+                                    Clear notes
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Edit Mode -->
+                        <div id="notes-edit-{{ story.id }}" class="notes-edit" style="display: none;">
+                            <textarea id="notes-text-{{ story.id }}" 
+                                      class="w-full p-3 border border-gray-300 rounded-md text-sm resize-y focus:ring-hn-orange focus:border-hn-orange" 
+                                      rows="4" 
+                                      placeholder="Add your personal notes about this story..."
+                                      onkeydown="handleNotesKeydown(event, {{ story.id }})"
+                                      oninput="autoResizeTextarea(this)"></textarea>
+                            <div class="mt-2 flex items-center justify-between">
+                                <div id="notes-status-{{ story.id }}" class="text-xs text-gray-500"></div>
+                                <div class="flex space-x-2">
+                                    <button onclick="saveNotes({{ story.id }})" 
+                                            class="px-3 py-1 text-xs border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50">
+                                        Cancel
+                                    </button>
+                                    <button onclick="saveNotes({{ story.id }})" 
+                                            class="px-3 py-1 text-xs bg-hn-orange text-white rounded-md hover:bg-orange-600">
+                                        Save Notes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between pt-4 border-t">
+                    <div class="flex space-x-2">
+                        <button onclick="unsaveStory({{ story.id }}, this)" 
+                                data-story-id="{{ story.id }}"
+                                class="inline-flex items-center px-3 py-1 rounded-md text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 border border-transparent">
+                            <i class="fas fa-bookmark-slash mr-1"></i>Unsave
+                        </button>
+                        <button onclick="logInteraction({{ story.id }}, 'thumbs_up', this)" 
+                                data-story-id="{{ story.id }}" data-interaction="thumbs_up"
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-green-100 text-green-700 hover:bg-green-200 border border-transparent">
+                            <i class="fas fa-thumbs-up mr-1"></i>Relevant
+                        </button>
+                        <button onclick="logInteraction({{ story.id }}, 'thumbs_down', this)" 
+                                data-story-id="{{ story.id }}" data-interaction="thumbs_down"
+                                class="interaction-btn inline-flex items-center px-3 py-1 rounded-md text-sm bg-red-100 text-red-700 hover:bg-red-200 border border-transparent">
+                            <i class="fas fa-thumbs-down mr-1"></i>Not Relevant
+                        </button>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        Relevance Score: {{ "%.1f"|format(story.relevance_score) }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<script>
+// Handle unsaving stories
+async function unsaveStory(storyId, buttonElement) {
+    const confirmed = await showConfirmModal(
+        'Are you sure you want to remove this story from your saved list?',
+        'Remove Saved Story',
+        'fa-bookmark-slash',
+        'text-red-500'
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    // Show loading state
+    const originalContent = buttonElement.innerHTML;
+    buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Removing...';
+    buttonElement.disabled = true;
+    
+    fetch(`/api/interaction/${storyId}/save`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'removed') {
+            // Remove the story card with animation
+            const storyCard = buttonElement.closest('.bg-white');
+            storyCard.style.opacity = '0.5';
+            storyCard.style.transform = 'translateX(-20px)';
+            
+            setTimeout(() => {
+                storyCard.remove();
+                
+                // Check if this was the last story in the date section
+                const dateSection = storyCard.closest('.mb-8');
+                if (dateSection && dateSection.querySelectorAll('.bg-white').length === 0) {
+                    dateSection.remove();
+                }
+                
+                // Update total count
+                const totalElement = document.querySelector('p.text-gray-600');
+                if (totalElement) {
+                    const currentTotal = parseInt(totalElement.textContent.match(/(\d+) stories/)[1]);
+                    totalElement.textContent = `${currentTotal - 1} stories saved for later reading`;
+                    
+                    // Show empty state if no stories left
+                    if (currentTotal === 1) {
+                        location.reload();
+                    }
+                }
+            }, 300);
+            
+            showToast('Story removed from saved list', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to unsave story');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to remove story', 'error');
+        buttonElement.innerHTML = originalContent;
+        buttonElement.disabled = false;
+    });
+}
+
+// Notes system functions
+function enterEditMode(storyId) {
+    const viewMode = document.getElementById(`notes-view-${storyId}`);
+    const editMode = document.getElementById(`notes-edit-${storyId}`);
+    const textarea = document.getElementById(`notes-text-${storyId}`);
+    const displayDiv = document.getElementById(`notes-display-${storyId}`);
+    
+    // Copy current notes to textarea
+    if (displayDiv.style.display !== 'none') {
+        textarea.value = displayDiv.textContent;
+    }
+    
+    // Switch to edit mode
+    viewMode.style.display = 'none';
+    editMode.style.display = 'block';
+    
+    // Auto-resize textarea to fit existing content
+    setTimeout(() => {
+        autoResizeTextarea(textarea);
+        textarea.focus();
+    }, 0);
+}
+
+function cancelEditMode(storyId) {
+    const viewMode = document.getElementById(`notes-view-${storyId}`);
+    const editMode = document.getElementById(`notes-edit-${storyId}`);
+    const statusElement = document.getElementById(`notes-status-${storyId}`);
+    
+    // Switch back to view mode
+    editMode.style.display = 'none';
+    viewMode.style.display = 'block';
+    statusElement.textContent = '';
+}
+
+function saveNotes(storyId) {
+    const textarea = document.getElementById(`notes-text-${storyId}`);
+    const statusElement = document.getElementById(`notes-status-${storyId}`);
+    const notes = textarea.value.trim();
+    
+    statusElement.textContent = 'Saving...';
+    
+    const formData = new FormData();
+    formData.append('notes', notes);
+    
+    fetch(`/api/story/${storyId}/notes`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'saved') {
+            // Update the view mode
+            updateNotesDisplay(storyId, notes);
+            
+            // Switch back to view mode
+            cancelEditMode(storyId);
+            
+            // Show success message
+            showToast('Notes saved! 📝', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to save notes');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        statusElement.textContent = 'Failed to save notes';
+        showToast('Failed to save notes', 'error');
+        setTimeout(() => {
+            statusElement.textContent = '';
+        }, 3000);
+    });
+}
+
+function updateNotesDisplay(storyId, notes) {
+    const displayDiv = document.getElementById(`notes-display-${storyId}`);
+    const emptyDiv = document.getElementById(`notes-empty-${storyId}`);
+    const addBtn = document.getElementById(`add-notes-btn-${storyId}`);
+    const editBtn = document.getElementById(`edit-notes-btn-${storyId}`);
+    const clearBtn = document.getElementById(`clear-notes-btn-${storyId}`);
+    
+    if (notes && notes.length > 0) {
+        // Show notes
+        displayDiv.textContent = notes;
+        displayDiv.style.display = 'block';
+        emptyDiv.style.display = 'none';
+        addBtn.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        clearBtn.style.display = 'inline-block';
+    } else {
+        // Show empty state
+        displayDiv.style.display = 'none';
+        emptyDiv.style.display = 'flex';
+        addBtn.style.display = 'inline-block';
+        editBtn.style.display = 'none';
+        clearBtn.style.display = 'none';
+    }
+}
+
+async function clearNotes(storyId) {
+    const confirmed = await showConfirmModal(
+        'Are you sure you want to clear all notes for this story?',
+        'Clear Notes',
+        'fa-trash',
+        'text-red-500'
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    const statusElement = document.getElementById(`notes-status-${storyId}`);
+    statusElement.textContent = 'Clearing notes...';
+    
+    const formData = new FormData();
+    formData.append('notes', '');
+    
+    fetch(`/api/story/${storyId}/notes`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'saved') {
+            updateNotesDisplay(storyId, '');
+            showToast('Notes cleared', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to clear notes');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to clear notes', 'error');
+    })
+    .finally(() => {
+        statusElement.textContent = '';
+    });
+}
+
+// Load existing notes on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load notes for all stories
+    document.querySelectorAll('[id^="notes-text-"]').forEach(textarea => {
+        const storyId = textarea.id.replace('notes-text-', '');
+        
+        fetch(`/api/story/${storyId}/notes`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.notes) {
+                updateNotesDisplay(storyId, data.notes);
+            }
+        })
+        .catch(console.error);
+    });
+    
+    // Load interaction states for all buttons
+    document.querySelectorAll('.interaction-btn').forEach(button => {
+        const storyId = button.dataset.storyId;
+        const interactionType = button.dataset.interaction;
+        
+        fetch(`/api/interactions/${storyId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const hasInteraction = data.interactions.some(i => i.interaction_type === interactionType);
+                if (hasInteraction) {
+                    updateButtonState(button, interactionType, true);
+                }
+            }
+        })
+        .catch(console.error);
+    });
+});
+
+// Handle keyboard shortcuts in notes textarea
+function handleNotesKeydown(event, storyId) {
+    // Save notes on Escape key
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        saveNotes(storyId);
+    }
+    
+    // Save notes on Ctrl+Enter or Cmd+Enter
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        saveNotes(storyId);
+    }
+}
+
+// Auto-resize textarea to fit content
+function autoResizeTextarea(textarea) {
+    // Reset height to recalculate
+    textarea.style.height = 'auto';
+    
+    // Set height to scrollHeight (content height)
+    textarea.style.height = textarea.scrollHeight + 'px';
+    
+    // Set minimum height (4 rows worth)
+    const minHeight = parseFloat(getComputedStyle(textarea).lineHeight) * 4;
+    if (textarea.scrollHeight < minHeight) {
+        textarea.style.height = minHeight + 'px';
+    }
+}
+</script>
+{% endblock %}

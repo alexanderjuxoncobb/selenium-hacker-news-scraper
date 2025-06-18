@@ -159,6 +159,48 @@ async def log_story_interaction(story_id: int, interaction_type: str = Form(...)
         print(f"❌ Error logging interaction: {e}")
         return {"status": "error", "message": str(e)}
 
+@app.get("/api/interactions/{story_id}")
+async def get_story_interactions(story_id: int):
+    """Get all interactions for a specific story"""
+    try:
+        interactions = db.get_story_interactions(story_id)
+        return {
+            "status": "success",
+            "story_id": story_id,
+            "interactions": interactions
+        }
+    except Exception as e:
+        print(f"❌ Error getting interactions: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.delete("/api/interaction/{story_id}/{interaction_type}")
+async def remove_story_interaction(story_id: int, interaction_type: str):
+    """Remove a specific interaction"""
+    try:
+        db.remove_interaction(story_id, interaction_type)
+        return {
+            "status": "removed",
+            "story_id": story_id,
+            "interaction": interaction_type,
+            "message": "Interaction removed successfully"
+        }
+    except Exception as e:
+        print(f"❌ Error removing interaction: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/saved-stories")
+async def get_saved_stories():
+    """Get all saved stories with their details"""
+    try:
+        saved_stories = db.get_saved_stories()
+        return {
+            "status": "success",
+            "saved_stories": saved_stories
+        }
+    except Exception as e:
+        print(f"❌ Error getting saved stories: {e}")
+        return {"status": "error", "message": str(e)}
+
 @app.get("/interests", response_class=HTMLResponse)
 async def interests_page(request: Request):
     """Interest management page"""
@@ -200,6 +242,54 @@ async def analytics_page(request: Request):
         "daily_stats": daily_stats,
         "interaction_stats": interaction_stats,
         "available_dates": available_dates
+    })
+
+@app.post("/api/story/{story_id}/notes")
+async def save_story_notes(story_id: int, notes: str = Form(...)):
+    """Save personal notes for a story"""
+    try:
+        db.save_story_notes(story_id, notes)
+        return {
+            "status": "saved",
+            "story_id": story_id,
+            "message": "Notes saved successfully"
+        }
+    except Exception as e:
+        print(f"❌ Error saving notes: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/story/{story_id}/notes")
+async def get_story_notes(story_id: int):
+    """Get personal notes for a story"""
+    try:
+        notes = db.get_story_notes(story_id)
+        return {
+            "status": "success",
+            "story_id": story_id,
+            "notes": notes
+        }
+    except Exception as e:
+        print(f"❌ Error getting notes: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/saved", response_class=HTMLResponse)
+async def saved_stories_page(request: Request):
+    """Saved stories page"""
+    saved_stories = db.get_saved_stories()
+    
+    # Group stories by date for better organization
+    stories_by_date = {}
+    for story in saved_stories:
+        story_date = story['date']
+        if story_date not in stories_by_date:
+            stories_by_date[story_date] = []
+        stories_by_date[story_date].append(story)
+    
+    return templates.TemplateResponse("saved.html", {
+        "request": request,
+        "saved_stories": saved_stories,
+        "stories_by_date": stories_by_date,
+        "total_saved": len(saved_stories)
     })
 
 @app.get("/health")

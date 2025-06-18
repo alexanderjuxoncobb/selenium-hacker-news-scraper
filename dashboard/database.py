@@ -97,11 +97,25 @@ class DatabaseManager:
                 )
             """)
             
+            # Story notes table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS story_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    story_id INTEGER NOT NULL,
+                    notes TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (story_id) REFERENCES stories (id),
+                    UNIQUE(story_id)
+                )
+            """)
+            
             # Create indexes for better performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_date ON stories (date)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_relevant ON stories (is_relevant)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_story ON user_interactions (story_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_type ON user_interactions (interaction_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_story ON story_notes (story_id)")
             
             conn.commit()
     
@@ -224,12 +238,127 @@ class DatabaseManager:
         """Log a user interaction with a story"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            
+            # For rating interactions (thumbs_up/thumbs_down), remove the opposite rating first
+            if interaction_type in ['thumbs_up', 'thumbs_down']:
+                opposite_type = 'thumbs_down' if interaction_type == 'thumbs_up' else 'thumbs_up'
+                cursor.execute("""
+                    DELETE FROM user_interactions 
+                    WHERE story_id = ? AND interaction_type = ?
+                """, (story_id, opposite_type))
+                
+                # Also remove existing rating of the same type to allow toggling
+                cursor.execute("""
+                    DELETE FROM user_interactions 
+                    WHERE story_id = ? AND interaction_type = ?
+                """, (story_id, interaction_type))
+            
             cursor.execute("""
                 INSERT INTO user_interactions 
                 (story_id, interaction_type, timestamp, duration_seconds)
                 VALUES (?, ?, ?, ?)
             """, (story_id, interaction_type, datetime.now().isoformat(), duration_seconds))
             conn.commit()
+    
+    def get_story_interactions(self, story_id: int) -> List[Dict]:
+        """Get all interactions for a specific story"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT interaction_type, timestamp, duration_seconds
+                FROM user_interactions 
+                WHERE story_id = ?
+                ORDER BY timestamp DESC
+            """, (story_id,))
+            
+            return [
+                {
+                    'interaction_type': row[0],
+                    'timestamp': row[1],
+                    'duration_seconds': row[2]
+                }
+                for row in cursor.fetchall()
+            ]
+    
+    def remove_interaction(self, story_id: int, interaction_type: str):
+        """Remove a specific interaction"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM user_interactions 
+                WHERE story_id = ? AND interaction_type = ?
+            """, (story_id, interaction_type))
+            conn.commit()
+    
+    def get_saved_stories(self) -> List[Dict]:
+        """Get all saved stories with their details, ordered by save date"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
+                       s.author, s.comments_count, s.hn_discussion_url, 
+                       s.article_summary, s.comments_analysis, s.is_relevant, 
+                       s.relevance_score, s.scraped_at, ui.timestamp as saved_at
+                FROM stories s
+                JOIN user_interactions ui ON s.id = ui.story_id
+                WHERE ui.interaction_type = 'save'
+                ORDER BY ui.timestamp DESC
+            """)
+            
+            saved_stories = []
+            for row in cursor.fetchall():
+                comments_analysis = None
+                if row[10]:  # comments_analysis column
+                    try:
+                        comments_analysis = json.loads(row[10])
+                    except json.JSONDecodeError:
+                        pass
+                
+                saved_stories.append({
+                    'id': row[0],
+                    'date': row[1],
+                    'rank': row[2],
+                    'title': row[3],
+                    'url': row[4],
+                    'points': row[5],
+                    'author': row[6],
+                    'comments_count': row[7],
+                    'hn_discussion_url': row[8],
+                    'article_summary': row[9],
+                    'comments_analysis': comments_analysis,
+                    'is_relevant': bool(row[11]),
+                    'relevance_score': row[12],
+                    'scraped_at': row[13],
+                    'saved_at': row[14]
+                })
+            
+            return saved_stories
+    
+    def save_story_notes(self, story_id: int, notes: str):
+        """Save or update personal notes for a story"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            
+            cursor.execute("""
+                INSERT OR REPLACE INTO story_notes 
+                (story_id, notes, created_at, updated_at)
+                VALUES (?, ?, 
+                    COALESCE((SELECT created_at FROM story_notes WHERE story_id = ?), ?),
+                    ?)
+            """, (story_id, notes, story_id, now, now))
+            conn.commit()
+    
+    def get_story_notes(self, story_id: int) -> Optional[str]:
+        """Get personal notes for a story"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT notes FROM story_notes WHERE story_id = ?
+            """, (story_id,))
+            
+            result = cursor.fetchone()
+            return result[0] if result else None
     
     def get_user_interaction_stats(self, days: int = 30) -> Dict:
         """Get user interaction statistics for the last N days"""
