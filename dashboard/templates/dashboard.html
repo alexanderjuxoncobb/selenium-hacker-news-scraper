@@ -14,7 +14,10 @@
                     📰 Daily Digest
                 </h1>
                 <p class="mt-1 text-sm text-gray-600">
-                    {{ target_date }} - {{ stats.relevant_stories }} relevant stories of {{ stats.total_stories }} total
+                    {{ target_date }} - {{ stats.relevant_stories }} relevant stories of {{ stats.total_stories }} newly processed
+                    {% if stats.cached_stories > 0 %}
+                    ({{ stats.cached_stories }} from cache, {{ stats.total_scraped }} total scraped)
+                    {% endif %}
                 </p>
             </div>
             
@@ -53,8 +56,11 @@
                     <i class="fas fa-newspaper text-hn-orange text-xl"></i>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-gray-500">Total Stories</p>
+                    <p class="text-sm font-medium text-gray-500">Newly Processed</p>
                     <p class="text-2xl font-semibold text-gray-900">{{ stats.total_stories }}</p>
+                    {% if stats.cached_stories > 0 %}
+                    <p class="text-xs text-gray-400">{{ stats.cached_stories }} from cache</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -193,19 +199,25 @@
                         <!-- Technical Details -->
                         {% if story.comments_analysis.detailed_technical_analysis %}
                         {% set tech = story.comments_analysis.detailed_technical_analysis %}
-                        {% if tech.specific_numbers or tech.tools_mentioned or tech.performance_data %}
+                        {% if tech.specific_numbers and tech.specific_numbers|length > 0 and tech.specific_numbers != [''] %}
                         <div class="bg-blue-50 rounded-md p-3">
                             <h5 class="text-xs font-semibold text-blue-700 mb-2">🔧 Technical Details:</h5>
-                            {% if tech.specific_numbers %}
                             <div class="mb-2">
                                 <span class="text-xs font-medium text-blue-600">Metrics:</span>
-                                <p class="text-xs text-blue-700">{{ ', '.join(tech.specific_numbers[:3]) }}</p>
+                                <ul class="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                    {% for item in tech.specific_numbers[:3] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
-                            {% endif %}
-                            {% if tech.performance_data %}
+                            {% if tech.performance_data and tech.performance_data|length > 0 and tech.performance_data != [''] %}
                             <div>
                                 <span class="text-xs font-medium text-blue-600">Performance:</span>
-                                <p class="text-xs text-blue-700">{{ ', '.join(tech.performance_data[:2]) }}</p>
+                                <ul class="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                    {% for item in tech.performance_data[:2] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endif %}
                         </div>
@@ -215,19 +227,27 @@
                         <!-- Cost Analysis -->
                         {% if story.comments_analysis.detailed_cost_analysis %}
                         {% set cost = story.comments_analysis.detailed_cost_analysis %}
-                        {% if cost.price_comparisons or cost.efficiency_gains %}
+                        {% if (cost.price_comparisons and cost.price_comparisons|length > 0 and cost.price_comparisons != ['']) or (cost.efficiency_gains and cost.efficiency_gains|length > 0 and cost.efficiency_gains != ['']) %}
                         <div class="bg-green-50 rounded-md p-3">
                             <h5 class="text-xs font-semibold text-green-700 mb-2">💰 Cost Analysis:</h5>
-                            {% if cost.price_comparisons %}
+                            {% if cost.price_comparisons and cost.price_comparisons|length > 0 and cost.price_comparisons != [''] %}
                             <div class="mb-2">
                                 <span class="text-xs font-medium text-green-600">Pricing:</span>
-                                <p class="text-xs text-green-700">{{ ', '.join(cost.price_comparisons[:2]) }}</p>
+                                <ul class="text-xs text-green-700 list-disc list-inside space-y-1">
+                                    {% for item in cost.price_comparisons[:2] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endif %}
-                            {% if cost.efficiency_gains %}
+                            {% if cost.efficiency_gains and cost.efficiency_gains|length > 0 and cost.efficiency_gains != [''] %}
                             <div>
                                 <span class="text-xs font-medium text-green-600">Efficiency:</span>
-                                <p class="text-xs text-green-700">{{ ', '.join(cost.efficiency_gains[:2]) }}</p>
+                                <ul class="text-xs text-green-700 list-disc list-inside space-y-1">
+                                    {% for item in cost.efficiency_gains[:2] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endif %}
                         </div>
@@ -237,19 +257,27 @@
                         <!-- Community Consensus -->
                         {% if story.comments_analysis.detailed_consensus %}
                         {% set consensus = story.comments_analysis.detailed_consensus %}
-                        {% if consensus.strong_agreements or consensus.major_disagreements %}
+                        {% if (consensus.strong_agreements and consensus.strong_agreements|length > 0 and consensus.strong_agreements != ['']) or (consensus.major_disagreements and consensus.major_disagreements|length > 0 and consensus.major_disagreements != ['']) %}
                         <div class="bg-yellow-50 rounded-md p-3">
                             <h5 class="text-xs font-semibold text-yellow-700 mb-2">🤝 Community Consensus:</h5>
-                            {% if consensus.strong_agreements %}
+                            {% if consensus.strong_agreements and consensus.strong_agreements|length > 0 and consensus.strong_agreements != [''] %}
                             <div class="mb-2">
                                 <span class="text-xs font-medium text-yellow-600">Agreements:</span>
-                                <p class="text-xs text-yellow-700">{{ ', '.join(consensus.strong_agreements[:2]) }}</p>
+                                <ul class="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                                    {% for item in consensus.strong_agreements[:2] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endif %}
-                            {% if consensus.major_disagreements %}
+                            {% if consensus.major_disagreements and consensus.major_disagreements|length > 0 and consensus.major_disagreements != [''] %}
                             <div>
                                 <span class="text-xs font-medium text-yellow-600">Disagreements:</span>
-                                <p class="text-xs text-yellow-700">{{ ', '.join(consensus.major_disagreements[:2]) }}</p>
+                                <ul class="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                                    {% for item in consensus.major_disagreements[:2] %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endif %}
                         </div>

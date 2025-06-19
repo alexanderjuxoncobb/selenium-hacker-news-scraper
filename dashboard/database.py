@@ -25,6 +25,7 @@ class Story:
     is_relevant: bool
     relevance_score: float
     scraped_at: str
+    was_cached: bool = False
     comments_analysis: Optional[Dict] = None
 
 @dataclass
@@ -70,6 +71,7 @@ class DatabaseManager:
                     is_relevant BOOLEAN DEFAULT FALSE,
                     relevance_score REAL DEFAULT 0.0,
                     scraped_at TEXT NOT NULL,
+                    was_cached BOOLEAN DEFAULT FALSE,  -- Track if story was served from cache
                     UNIQUE(date, rank)
                 )
             """)
@@ -141,8 +143,8 @@ class DatabaseManager:
                         INSERT OR REPLACE INTO stories 
                         (date, rank, title, url, points, author, comments_count, 
                          hn_discussion_url, article_summary, comments_analysis, 
-                         is_relevant, relevance_score, scraped_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         is_relevant, relevance_score, scraped_at, was_cached)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         scrape_date,
                         story.get('rank', 0),
@@ -155,8 +157,9 @@ class DatabaseManager:
                         story.get('article_summary'),
                         comments_analysis_json,
                         story.get('is_relevant', False),
-                        1.0 if story.get('is_relevant', False) else 0.0,  # Simple relevance score
-                        story.get('scraped_at', data.get('scrape_date', ''))
+                        story.get('relevance_score', 1.0 if story.get('is_relevant', False) else 0.0),
+                        story.get('scraped_at', data.get('scrape_date', '')),
+                        story.get('was_cached', False)
                     ))
                 
                 conn.commit()
@@ -172,7 +175,8 @@ class DatabaseManager:
             cursor.execute("""
                 SELECT id, date, rank, title, url, points, author, comments_count,
                        hn_discussion_url, article_summary, comments_analysis,
-                       is_relevant, relevance_score, scraped_at
+                       is_relevant, relevance_score, scraped_at, 
+                       COALESCE(was_cached, 0) as was_cached
                 FROM stories 
                 WHERE date = ? 
                 ORDER BY rank
@@ -194,7 +198,8 @@ class DatabaseManager:
                     points=row[5], author=row[6], comments_count=row[7],
                     hn_discussion_url=row[8], article_summary=row[9],
                     is_relevant=bool(row[11]), relevance_score=row[12],
-                    scraped_at=row[13], comments_analysis=comments_analysis
+                    scraped_at=row[13], was_cached=bool(row[14]), 
+                    comments_analysis=comments_analysis
                 )
                 stories.append(story)
             
@@ -218,20 +223,24 @@ class DatabaseManager:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT 
-                    COUNT(*) as total_stories,
+                    COUNT(*) as total_scraped,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
                     SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories,
                     AVG(points) as avg_points,
-                    SUM(comments_count) as total_comments
+                    SUM(comments_count) as total_comments,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
                 FROM stories 
                 WHERE date = ?
             """, (target_date,))
             
             row = cursor.fetchone()
             return {
-                'total_stories': row[0] or 0,
-                'relevant_stories': row[1] or 0,
-                'avg_points': round(row[2] or 0, 1),
-                'total_comments': row[3] or 0
+                'total_stories': row[1] or 0,  # Non-cached stories only
+                'total_scraped': row[0] or 0,  # All scraped stories
+                'relevant_stories': row[2] or 0,
+                'avg_points': round(row[3] or 0, 1),
+                'total_comments': row[4] or 0,
+                'cached_stories': row[5] or 0
             }
     
     def log_interaction(self, story_id: int, interaction_type: str, duration_seconds: Optional[int] = None):
@@ -298,7 +307,8 @@ class DatabaseManager:
                 SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
                        s.author, s.comments_count, s.hn_discussion_url, 
                        s.article_summary, s.comments_analysis, s.is_relevant, 
-                       s.relevance_score, s.scraped_at, ui.timestamp as saved_at
+                       s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
+                       COALESCE(s.was_cached, 0) as was_cached
                 FROM stories s
                 JOIN user_interactions ui ON s.id = ui.story_id
                 WHERE ui.interaction_type = 'save'
@@ -329,7 +339,8 @@ class DatabaseManager:
                     'is_relevant': bool(row[11]),
                     'relevance_score': row[12],
                     'scraped_at': row[13],
-                    'saved_at': row[14]
+                    'saved_at': row[14],
+                    'was_cached': bool(row[15])
                 })
             
             return saved_stories

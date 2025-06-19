@@ -442,7 +442,8 @@ class EnhancedHackerNewsScraper:
     def generate_daily_email_content(self, daily_data: Dict) -> str:
         """Generate formatted email content with cost report"""
         scrape_date = daily_data.get('scrape_date', 'Unknown date')
-        total_stories = daily_data.get('total_stories', 0)
+        total_stories = daily_data.get('total_stories', 0)  # Non-cached stories
+        total_scraped = daily_data.get('total_scraped', total_stories)  # Backward compatibility
         relevant_stories = daily_data.get('relevant_stories', 0)
         stories = daily_data.get('stories', [])
         
@@ -458,7 +459,10 @@ class EnhancedHackerNewsScraper:
         email_parts.append("# 📰 Your Daily Hacker News Digest")
         email_parts.append(f"*Generated on {scrape_date[:10]} at {scrape_date[11:19]}*")
         email_parts.append("")
-        email_parts.append(f"**Summary:** Found {relevant_stories} relevant stories out of {total_stories} total stories")
+        cached_stories = total_scraped - total_stories
+        email_parts.append(f"**Summary:** Found {relevant_stories} relevant stories out of {total_stories} newly processed stories")
+        if cached_stories > 0:
+            email_parts.append(f"**📋 Cache Usage:** {cached_stories} stories served from cache (out of {total_scraped} total scraped)")
         email_parts.append(f"**💰 Cost Optimization:** Saved {cost_report['savings_percentage']}% API costs (${cost_report['estimated_money_saved']} saved)")
         
         # Add insights summary if available
@@ -508,9 +512,13 @@ class EnhancedHackerNewsScraper:
         
         processed_stories = []
         relevant_count = 0
+        non_cached_count = 0  # Track stories that weren't served from cache
         
         for story in stories:
             print(f"\n📰 Processing: {story['title'][:50]}...")
+            
+            # Track initial API call count to detect cache usage
+            initial_api_calls = self.ai.api_calls_made
             
             # Check if story is relevant using cost-optimized filtering
             if self.is_relevant_story(story):
@@ -545,6 +553,15 @@ class EnhancedHackerNewsScraper:
             else:
                 story["is_relevant"] = False
             
+            # Check if this story required any new API calls (not cached)
+            was_cached = self.ai.api_calls_made == initial_api_calls
+            if not was_cached:
+                non_cached_count += 1
+                print(f"📊 Non-cached story count: {non_cached_count}")
+            
+            # Add cache status to story data
+            story["was_cached"] = was_cached
+            
             processed_stories.append(story)
             
             # Add small delay to be respectful to servers
@@ -564,14 +581,16 @@ class EnhancedHackerNewsScraper:
         
         result = {
             "scrape_date": datetime.now().isoformat(),
-            "total_stories": len(stories),
+            "total_stories": non_cached_count,  # Only count non-cached stories
+            "total_scraped": len(stories),  # Keep track of actual scraped stories
             "relevant_stories": relevant_count,
             "stories": processed_stories,
             "cost_optimization": final_report,
             "actionable_insights_summary": insights_summary
         }
         
-        print(f"\n✅ Enhanced scraping complete! Found {relevant_count} relevant stories out of {len(stories)} total.")
+        print(f"\n✅ Enhanced scraping complete! Found {relevant_count} relevant stories out of {non_cached_count} newly processed stories.")
+        print(f"📊 Total scraped: {len(stories)}, Newly processed: {non_cached_count}, Cached: {len(stories) - non_cached_count}")
         print(f"💰 Cost savings: {final_report['savings_percentage']}% (${final_report['estimated_money_saved']} saved)")
         print(f"🔄 API calls: {final_report['api_calls_made']} made, {final_report['api_calls_saved']} saved")
         
