@@ -393,70 +393,75 @@ class CostOptimizedAI:
             all_comments = "\n\n".join(comments_text)
             
             prompt = f"""
-            Extract detailed, specific, quantitative insights from these {len(top_comments)} Hacker News comments. Focus on concrete information, numbers, tools, and technical details that would normally require 30 minutes of reading. Respond with ONLY valid JSON.
+            Extract detailed, specific, quantitative insights from these {len(top_comments)} Hacker News comments. Focus on concrete information with CONTEXT explaining why it matters.
+
+            CRITICAL: Every piece of data must include context explaining its significance.
+
+            EXAMPLES OF GOOD VS BAD EXTRACTION:
+
+            GOOD (with context):
+            - "One developer mentioned maintaining 700k line legacy ERP systems, highlighting how technical debt becomes overwhelming in enterprise software"
+            - "Users report RTX 4090 GPUs ($1500) can run 70B models with 4-bit quantization, but inference drops to 5 tokens/sec compared to 50 tokens/sec on H100 ($30k), showing the performance vs cost tradeoff"
+            - "Multiple teams switched from OpenAI API to local models, saving $5k-10k monthly but requiring 32GB+ RAM and accepting 3x slower response times"
+
+            BAD (random numbers without context):
+            - "700k lines of code"
+            - "RTX 4090" 
+            - "$5k monthly"
+            - "32GB RAM"
 
             COMMENTS:
             {all_comments}
 
-            EXTRACTION PRIORITIES:
-            - Specific numbers, metrics, benchmarks, percentages, costs, performance data
-            - Tool names, library versions, framework names, specific technologies
-            - Company names, product names, service names, platform names
-            - Technical implementation details, setup instructions, configuration specifics
-            - Cost comparisons with actual dollar amounts or resource requirements
-            - Performance measurements, speed comparisons, efficiency gains/losses
-            - Success/failure experiences with concrete details and outcomes
-            - Specific disagreements with technical reasoning and counter-arguments
-            - Market intelligence, business strategies, competitive positioning
-            - Hardware requirements, system specifications, resource constraints
-
-            Return this exact JSON structure with detailed, specific information:
+            Return this exact JSON structure with detailed, contextual information:
             {{
                 "technical_details": {{
-                    "specific_numbers": ["50GB RAM requirement", "2x performance improvement", "$500 vs $5000 cost"],
-                    "tools_mentioned": ["GGML quantization", "llama.cpp", "RTX 4090", "H100 GPU"],
-                    "performance_data": ["30 tokens/sec on CPU", "4-bit quantization reduces quality by 15%"],
-                    "hardware_specs": ["16GB VRAM minimum", "requires CUDA 11.8+", "works on Apple M1 with 32GB RAM"]
+                    "specific_numbers": ["Include context: Why do these numbers matter? What do they represent?"],
+                    "tools_mentioned": ["Tool name + why it's being discussed + any performance/cost context"],
+                    "performance_data": ["Performance metric + comparison + what this means for users"],
+                    "hardware_specs": ["Hardware requirement + use case + cost/benefit context"]
                 }},
                 "cost_analysis": {{
-                    "price_comparisons": ["Consumer GPU $500 vs Enterprise $5000", "Inference cost drops 80%"],
-                    "resource_requirements": ["8GB VRAM for 7B model", "32GB RAM for 13B model unquantized"],
-                    "efficiency_gains": ["10x faster with quantization", "reduces bandwidth by 75%"]
+                    "price_comparisons": ["Cost comparison + what you get for the price difference"],
+                    "resource_requirements": ["Resource needed + for what purpose + impact if you don't have it"],
+                    "efficiency_gains": ["Efficiency improvement + method used + real-world impact"]
                 }},
                 "implementation_insights": {{
-                    "setup_instructions": ["use --load-in-4bit flag", "install bitsandbytes library", "enable flash attention"],
-                    "configuration_details": ["temperature 0.7 works best", "context length 4096 tokens", "batch size 8 optimal"],
-                    "compatibility_issues": ["breaks on Windows with Python 3.11", "requires gcc 9+ for compilation"]
+                    "setup_instructions": ["Setup step + why it's needed + what happens if skipped"],
+                    "configuration_details": ["Config setting + optimal value + impact on performance/quality"],
+                    "compatibility_issues": ["What breaks + under what conditions + how to avoid/fix"]
                 }},
                 "community_consensus": {{
-                    "strong_agreements": ["Quantization essential for consumer hardware", "Quality loss acceptable for most use cases"],
-                    "major_disagreements": ["Some argue 8-bit minimum for production vs others say 4-bit sufficient", "Debate over GGML vs other quantization methods"],
-                    "expert_opinions": ["Production users report 4-bit unusable for reasoning tasks", "Hobbyists find 4-bit adequate for chat"]
+                    "strong_agreements": ["What community agrees on + why + supporting evidence"],
+                    "major_disagreements": ["What people debate + different positions + reasoning behind each"],
+                    "expert_opinions": ["Expert view + their credentials/experience + why this matters"]
                 }},
                 "business_intelligence": {{
-                    "market_trends": ["Consumer AI hardware demand increasing", "Enterprise shifting to cost-effective inference"],
-                    "company_strategies": ["OpenAI pricing pressure from local alternatives", "NVIDIA focusing on inference optimization"],
-                    "competitive_landscape": ["llama.cpp gaining adoption vs commercial APIs", "Hardware vendors optimizing for AI workloads"]
+                    "market_trends": ["Trend description + supporting evidence + business implications"],
+                    "company_strategies": ["Company approach + reasoning + competitive advantage/risk"],
+                    "competitive_landscape": ["Competition dynamic + market forces + opportunities/threats"]
                 }},
                 "success_failure_stories": {{
-                    "working_setups": ["User runs 70B model on RTX 4090 with 4-bit GGML", "Company saves $10k/month switching from API to local"],
-                    "failed_attempts": ["Cannot run 13B model on 8GB VRAM even with quantization", "Quality too poor for customer service chatbot"],
-                    "performance_reports": ["Achieves 15 tokens/sec on MacBook Pro M2", "Inference latency 200ms vs 2000ms for API calls"]
+                    "working_setups": ["Successful implementation + specific setup + results achieved"],
+                    "failed_attempts": ["What failed + why it failed + lessons learned"],
+                    "performance_reports": ["Performance achieved + setup used + comparison to alternatives"]
                 }},
                 "specific_recommendations": {{
-                    "actionable_advice": ["Start with 13B 4-bit for testing", "Use offloading for models larger than VRAM", "Monitor temperature under load"],
-                    "what_to_avoid": ["Dont use 2-bit quantization for reasoning", "Avoid running multiple models simultaneously", "Skip quantization if you have 80GB+ VRAM"],
-                    "optimization_tips": ["Enable KV cache offloading", "Use grouped query attention", "Batch similar requests together"]
+                    "actionable_advice": ["Recommendation + reasoning + expected outcome"],
+                    "what_to_avoid": ["What not to do + why + consequences of doing it anyway"],
+                    "optimization_tips": ["Optimization technique + implementation + performance gain"]
                 }},
                 "sentiment_summary": "Detailed multi-sentence summary capturing the nuanced discussion with specific examples and concrete details mentioned by the community"
             }}
             
-            CRITICAL JSON RULES:
-            - NO quotes inside strings (use single quotes or paraphrase)  
-            - NO line breaks inside strings
-            - Keep all technical terms and numbers exact but escape special characters
-            - If information category is not discussed, use empty array []
-            - Focus on extracting maximum concrete information per category
+            CRITICAL REQUIREMENTS:
+            - NEVER include standalone numbers/names without explaining their significance
+            - Each item must answer: What is it? Why does it matter? What's the impact?
+            - Focus on insights that save readers 30+ minutes of research
+            - Include 2-3 detailed, contextual items per section when content exists
+            - Use empty array [] only when genuinely no relevant content exists
+            - NO quotes inside strings, NO line breaks inside strings
+            - Extract maximum concrete information with full context
             """
             
             response = self.openai_client.chat.completions.create(
@@ -465,7 +470,7 @@ class CostOptimizedAI:
                     {"role": "system", "content": "You are a discussion analyst. Respond with only valid JSON, no additional text."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=800,  # Increased for detailed analysis
+                max_tokens=2000,  # Increased to ensure 2-3 items per section minimum
                 temperature=0.3,
                 response_format={"type": "json_object"}
             )
@@ -538,12 +543,36 @@ class CostOptimizedAI:
             stories = ai_analysis.get("success_failure_stories", {})
             recommendations = ai_analysis.get("specific_recommendations", {})
             
-            # Create comprehensive themes from all categories
+            # Create short, concise main themes (keywords/phrases only)
             main_themes = []
-            main_themes.extend(technical_details.get("tools_mentioned", [])[:4])  # Include more tools in main themes
-            main_themes.extend(business.get("market_trends", [])[:2])
+            
+            # Extract short keywords from tools mentioned
+            for tool_desc in technical_details.get("tools_mentioned", [])[:3]:
+                # Extract just the tool/tech name from the description
+                words = tool_desc.split()[:3]  # Take first few words only
+                for word in words:
+                    if word.lower() in ['claude', 'gemini', 'gpt', 'openai', 'anthropic', 'llama', 'pytorch', 'tensorflow', 'redis', 'postgres', 'docker', 'kubernetes', 'react', 'vue', 'angular', 'python', 'javascript', 'rust', 'go', 'java', 'ai', 'ml', 'exif']:
+                        main_themes.append(word.capitalize())
+                        break
+                    elif len(word) > 3 and word.isalpha():  # Generic tech term
+                        main_themes.append(word.capitalize())
+                        break
+            
+            # Add short business themes
+            for trend_desc in business.get("market_trends", [])[:2]:
+                # Extract key business terms
+                words = trend_desc.lower().split()
+                business_keywords = ['ai', 'automation', 'productivity', 'enterprise', 'startup', 'funding', 'growth', 'market', 'adoption', 'integration']
+                for keyword in business_keywords:
+                    if keyword in words:
+                        main_themes.append(keyword.capitalize())
+                        break
+            
+            # Remove duplicates and limit to 4 items
+            main_themes = list(dict.fromkeys(main_themes))[:4]
+            
             if not main_themes:
-                main_themes = ["Limited discussion with detailed analysis available"]
+                main_themes = ["AI tools", "Business adoption"]
             
             # Combine agreement and disagreement points
             agreement_points = consensus.get("strong_agreements", [])
