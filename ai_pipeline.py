@@ -549,7 +549,9 @@ class CostOptimizedAI:
             agreement_points = consensus.get("strong_agreements", [])
             disagreement_points = consensus.get("major_disagreements", [])
             
-            # Generate top comment summary if we have comments
+            # IMPORTANT: Generate top comment summary if we have comments
+            # NOTE TO SELF: User specifically requested this feature - DO NOT REMOVE!
+            # This provides AI-generated summaries of the top comment on each story
             top_comment_summary = None
             if comments_data and len(comments_data) > 0:
                 top_comment = comments_data[0]

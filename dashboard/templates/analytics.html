@@ -97,7 +97,7 @@
             <p class="text-sm text-gray-500">How you interact with stories (last 30 days)</p>
         </div>
         <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {% for interaction_type, stats in interaction_stats.items() %}
                 <div class="text-center p-4 border border-gray-200 rounded-lg">
                     <div class="text-3xl mb-2">
@@ -110,7 +110,15 @@
                         {% endif %}
                     </div>
                     <div class="text-2xl font-semibold text-gray-900 mb-1">{{ stats.count }}</div>
-                    <div class="text-sm text-gray-500 mb-2">{{ interaction_type.replace('_', ' ').title() }}</div>
+                    <div class="text-sm text-gray-500 mb-2">
+                        {% if interaction_type == 'click' %}Clicks
+                        {% elif interaction_type == 'thumbs_up' %}Thumbs Up
+                        {% elif interaction_type == 'thumbs_down' %}Thumbs Down
+                        {% elif interaction_type == 'save' %}Saves
+                        {% elif interaction_type == 'page_read' %}Pages Read
+                        {% else %}{{ interaction_type.replace('_', ' ').title() }}
+                        {% endif %}
+                    </div>
                     {% if stats.avg_duration > 0 %}
                     <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
                     {% endif %}
@@ -202,16 +210,16 @@ const ctx = document.getElementById('trendsChart').getContext('2d');
 const trendsChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: [{% for day in daily_stats %}'{{ day.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        labels: [{% for day in daily_stats|reverse %}'{{ day.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
         datasets: [{
             label: 'Total Stories',
-            data: [{% for day in daily_stats %}{{ day.total_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
+            data: [{% for day in daily_stats|reverse %}{{ day.total_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
             borderColor: '#6B7280',
             backgroundColor: 'rgba(107, 114, 128, 0.1)',
             tension: 0.1
         }, {
             label: 'Relevant Stories',
-            data: [{% for day in daily_stats %}{{ day.relevant_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
+            data: [{% for day in daily_stats|reverse %}{{ day.relevant_stories }}{% if not loop.last %},{% endif %}{% endfor %}],
             borderColor: '#FF6600',
             backgroundColor: 'rgba(255, 102, 0, 0.1)',
             tension: 0.1

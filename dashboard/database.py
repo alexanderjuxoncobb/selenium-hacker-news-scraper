@@ -213,7 +213,7 @@ class DatabaseManager:
             return [row[0] for row in cursor.fetchall()]
     
     def get_stats_by_date(self, target_date: str) -> Dict:
-        """Get statistics for a specific date"""
+        """Get statistics for a specific date, matching what's displayed on the dashboard"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""

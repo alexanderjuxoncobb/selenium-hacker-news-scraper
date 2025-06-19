@@ -18,59 +18,56 @@
     <!-- Current Interests -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Current Interest Weights</h2>
-            <p class="text-sm text-gray-500">Higher weights (closer to 1.0) mean more relevant to you</p>
+            <h2 class="text-lg font-medium text-gray-900">Your Interest Categories</h2>
+            <p class="text-sm text-gray-500">Organize your interests by priority to improve story filtering</p>
         </div>
         <div class="px-6 py-4">
             {% if interest_weights %}
-            <div class="space-y-4">
+            <div class="space-y-6">
                 {% for category in ['high', 'medium', 'low'] %}
                 <div>
-                    <h3 class="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide flex items-center">
                         {{ category|title }} Priority
                         {% if category == 'high' %}
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
-                            Most Important
+                            🔥 Most Important
                         </span>
                         {% elif category == 'medium' %}
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
-                            Moderate
+                            ⭐ Moderate
                         </span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ml-2">
-                            Low Priority
+                            🔍 Lower Priority
                         </span>
                         {% endif %}
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {% for interest in interest_weights %}
-                        {% if interest.category == category %}
-                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                            <div class="flex-1">
-                                <span class="text-sm font-medium text-gray-900">{{ interest.keyword }}</span>
-                                <div class="mt-1">
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="bg-hn-orange h-2 rounded-full" style="width: {{ (interest.weight * 100)|int }}%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ml-3 flex items-center space-x-2">
-                                <span class="text-sm text-gray-500">{{ "%.2f"|format(interest.weight) }}</span>
-                                <button onclick="deleteInterest({{ interest.id }}, '{{ interest.keyword }}')" 
-                                        class="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
-                                        title="Delete interest">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
-                            </div>
+                    
+                    {% set category_interests = interest_weights | selectattr('category', 'equalto', category) | list %}
+                    {% if category_interests %}
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 md:gap-x-6 lg:gap-x-8 gap-y-3">
+                        {% for interest in category_interests %}
+                        <div class="flex items-center justify-between p-2 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <span class="text-sm font-medium text-gray-900 truncate mr-2">{{ interest.keyword }}</span>
+                            <button onclick="deleteInterest({{ interest.id }}, '{{ interest.keyword }}')" 
+                                    class="text-red-500 hover:text-red-700 p-1 rounded transition-colors flex-shrink-0"
+                                    title="Delete interest">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
                         </div>
-                        {% endif %}
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <div class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                        <p class="text-sm">No {{ category }} priority interests yet</p>
+                        <p class="text-xs">Add some below!</p>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-gray-500 text-center py-8">No interest weights configured yet.</p>
+            <p class="text-gray-500 text-center py-8">No interests configured yet. Add some below to get started!</p>
             {% endif %}
         </div>
     </div>
@@ -79,30 +76,25 @@
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-medium text-gray-900">Add New Interest</h2>
-            <p class="text-sm text-gray-500">Add keywords or phrases that interest you</p>
+            <p class="text-sm text-gray-500">Add keywords or phrases that interest you to any priority category</p>
         </div>
         <div class="px-6 py-4">
             <form action="/interests/update" method="post" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="keyword" class="block text-sm font-medium text-gray-700">Keyword/Phrase</label>
                         <input type="text" name="keyword" id="keyword" required
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm"
-                               placeholder="e.g., machine learning">
+                               placeholder="e.g., machine learning, React, OpenAI">
                     </div>
                     <div>
-                        <label for="category" class="block text-sm font-medium text-gray-700">Priority</label>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Priority Category</label>
                         <select name="category" id="category" required
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
-                            <option value="high">High Priority</option>
-                            <option value="medium">Medium Priority</option>
-                            <option value="low">Low Priority</option>
+                            <option value="high">🔥 High Priority - Most important to me</option>
+                            <option value="medium" selected>⭐ Medium Priority - Moderately interesting</option>
+                            <option value="low">🔍 Low Priority - Occasionally relevant</option>
                         </select>
-                    </div>
-                    <div>
-                        <label for="weight" class="block text-sm font-medium text-gray-700">Weight (0.0 - 1.0)</label>
-                        <input type="number" name="weight" id="weight" min="0" max="1" step="0.1" value="1.0" required
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
                     </div>
                 </div>
                 <div>
@@ -146,6 +138,33 @@
     </div>
     {% endif %}
 
+    <!-- Interest Learning System -->
+    <div class="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-purple-900">
+                <i class="fas fa-brain mr-1"></i>
+                Automatic Interest Learning
+            </h3>
+            <button onclick="triggerLearning()" 
+                    id="learning-trigger-btn"
+                    class="px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors">
+                <i class="fas fa-play mr-1"></i>Run Learning
+            </button>
+        </div>
+        
+        <div id="learning-stats" class="text-sm text-purple-800">
+            <div class="flex items-center space-x-4 mb-2">
+                <span>📊 Loading learning statistics...</span>
+            </div>
+        </div>
+        
+        <div class="text-xs text-purple-700 bg-purple-100 rounded p-2 mt-2">
+            <strong>How it works:</strong> The system analyzes your thumbs up/down feedback to automatically adjust interest weights. 
+            Stories you like increase related interest weights, stories you dislike decrease them. 
+            Learning runs automatically every 5 feedback interactions.
+        </div>
+    </div>
+
     <!-- Tips -->
     <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 class="font-medium text-blue-900 mb-2">
@@ -157,24 +176,104 @@
             <li>• Include company names you're interested in: "OpenAI", "Google", "Apple"</li>
             <li>• Add technology names: "Kubernetes", "PostgreSQL", "Python"</li>
             <li>• Use thumbs up/down on stories to train the system</li>
-            <li>• Higher weights (0.8-1.0) for your most important interests</li>
+            <li>• Put your most important topics in "High Priority" for better filtering</li>
+            <li>• Start with fewer, more specific interests rather than many broad ones</li>
         </ul>
     </div>
 </div>
 
 <script>
-// Auto-set weight based on category selection
-document.getElementById('category').addEventListener('change', function() {
-    const weightInput = document.getElementById('weight');
-    const category = this.value;
-    
-    if (category === 'high') {
-        weightInput.value = '1.0';
-    } else if (category === 'medium') {
-        weightInput.value = '0.6';
-    } else if (category === 'low') {
-        weightInput.value = '0.3';
+// Load learning statistics
+async function loadLearningStats() {
+    try {
+        const response = await fetch('/api/learning/stats');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const stats = data.stats;
+            const statsDiv = document.getElementById('learning-stats');
+            
+            const learningEnabled = stats.learning_enabled ? '✅ Active' : '⏳ Needs more feedback';
+            const minFeedback = stats.learning_enabled ? '' : ' (need 3+ total)';
+            
+            statsDiv.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <div class="font-medium">Status</div>
+                        <div>${learningEnabled}</div>
+                    </div>
+                    <div>
+                        <div class="font-medium">Total Feedback</div>
+                        <div>${stats.total_feedback}${minFeedback}</div>
+                    </div>
+                    <div>
+                        <div class="font-medium">Recent (7 days)</div>
+                        <div>${stats.recent_feedback} reactions</div>
+                    </div>
+                    <div>
+                        <div class="font-medium">Weight Updates</div>
+                        <div>${stats.recent_updates} in 30 days</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('learning-stats').innerHTML = 
+                '<span class="text-red-600">⚠️ Error loading learning stats</span>';
+        }
+    } catch (error) {
+        console.error('Error loading learning stats:', error);
+        document.getElementById('learning-stats').innerHTML = 
+            '<span class="text-red-600">⚠️ Error loading learning stats</span>';
     }
+}
+
+// Trigger learning cycle
+async function triggerLearning() {
+    const button = document.getElementById('learning-trigger-btn');
+    const originalContent = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Learning...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/learning/run', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const results = data.results;
+            
+            if (results.status === 'success') {
+                showToast(`Learning complete! Updated ${results.changes_applied} interest weights`, 'success');
+                
+                // Reload the page to show updated weights
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else if (results.status === 'no_changes') {
+                showToast('Learning ran but no weight changes needed', 'success');
+            } else {
+                showToast(results.message || 'Learning completed with no changes', 'success');
+            }
+        } else {
+            throw new Error(data.message || 'Failed to run learning');
+        }
+    } catch (error) {
+        console.error('Error running learning:', error);
+        showToast('Failed to run learning cycle', 'error');
+    } finally {
+        button.innerHTML = originalContent;
+        button.disabled = false;
+        
+        // Reload stats
+        setTimeout(() => {
+            loadLearningStats();
+        }, 1000);
+    }
+}
+
+// Load learning stats on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadLearningStats();
 });
 
 // Delete interest function

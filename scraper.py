@@ -660,29 +660,33 @@ class HackerNewsScraper:
         for story in stories:
             print(f"\n📰 Processing: {story['title'][:50]}...")
             
-            # Check if story is relevant (placeholder for now)
-            if self.is_relevant_story(story):
+            # Always get article summary and comment analysis for all stories
+            # This ensures the web dashboard has rich AI content for every story
+            
+            # Get article summary if it's an external link
+            article_summary = None
+            if not story['url'].startswith('https://news.ycombinator.com'):
+                print("📄 Getting article summary...")
+                article_summary = self.get_article_summary(story['url'])
+            
+            # Analyze comments for all stories
+            print("💬 Analyzing comments...")
+            comments_analysis = self.analyze_comments(story['hn_discussion_url'])
+            
+            # Now check if story is relevant for email filtering
+            is_relevant = self.is_relevant_story(story)
+            if is_relevant:
                 relevant_count += 1
                 print(f"✅ Story marked as relevant ({relevant_count}/30)")
-                
-                # Get article summary if it's an external link
-                article_summary = None
-                if not story['url'].startswith('https://news.ycombinator.com'):
-                    print("📄 Getting article summary...")
-                    article_summary = self.get_article_summary(story['url'])
-                
-                # Analyze comments
-                print("💬 Analyzing comments...")
-                comments_analysis = self.analyze_comments(story['hn_discussion_url'])
-                
-                # Add processed data to story
-                story.update({
-                    "article_summary": article_summary,
-                    "comments_analysis": comments_analysis,
-                    "is_relevant": True
-                })
             else:
-                story["is_relevant"] = False
+                print("❌ Story not relevant for email")
+            
+            # Add processed data to story
+            story.update({
+                "article_summary": article_summary,
+                "comments_analysis": comments_analysis,
+                "is_relevant": is_relevant
+            })
             
             processed_stories.append(story)
             

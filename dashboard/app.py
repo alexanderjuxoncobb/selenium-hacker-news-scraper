@@ -16,6 +16,7 @@ import uvicorn
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add parent directory
 from database import DatabaseManager, init_interest_weights
 
 app = FastAPI(title="HN Scraper Dashboard", description="AI-Powered Hacker News Daily Digest")
@@ -147,7 +148,38 @@ async def log_story_interaction(story_id: int, interaction_type: str = Form(...)
         # For thumbs up/down, we can immediately learn from this feedback
         if interaction_type in ['thumbs_up', 'thumbs_down']:
             print(f"📊 User feedback: {interaction_type} for story {story_id}")
-            # TODO: Update interest weights based on feedback
+            
+            # Trigger learning system (run in background to avoid blocking response)
+            try:
+                import threading
+                from interest_learner import InterestLearner
+                
+                def run_learning():
+                    try:
+                        learner = InterestLearner(db.db_path)
+                        
+                        # Get total feedback count
+                        stats = learner.get_learning_stats()
+                        
+                        # Run learning cycle every 5 feedback items
+                        if stats["total_feedback"] % 5 == 0 and stats["total_feedback"] >= 5:
+                            print("🧠 Triggering interest learning cycle...")
+                            results = learner.run_learning_cycle(days_back=14)  # Last 2 weeks
+                            
+                            if results.get("status") == "success":
+                                print(f"✅ Learning complete: {results.get('changes_applied', 0)} weights updated")
+                    except Exception as e:
+                        print(f"⚠️ Learning system error: {e}")
+                
+                # Run learning in background thread
+                learning_thread = threading.Thread(target=run_learning)
+                learning_thread.daemon = True
+                learning_thread.start()
+                
+            except ImportError:
+                print("⚠️ Interest learning system not available")
+            except Exception as e:
+                print(f"⚠️ Error starting learning system: {e}")
         
         return {
             "status": "logged", 
@@ -216,10 +248,17 @@ async def interests_page(request: Request):
 @app.post("/interests/update")
 async def update_interests(
     keyword: str = Form(...),
-    weight: float = Form(...),
     category: str = Form(...)
 ):
-    """Update interest weight"""
+    """Add new interest with automatic weight based on category"""
+    # Auto-assign weight based on category
+    weight_mapping = {
+        "high": 1.0,
+        "medium": 0.6,
+        "low": 0.3
+    }
+    weight = weight_mapping.get(category, 0.6)  # Default to medium if invalid category
+    
     db.update_interest_weight(keyword, weight, category)
     return RedirectResponse(url="/interests", status_code=303)
 
@@ -234,6 +273,30 @@ async def delete_interest(interest_id: int):
             return {"status": "error", "message": "Interest not found"}
     except Exception as e:
         print(f"❌ Error deleting interest: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/learning/stats")
+async def get_learning_stats():
+    """Get interest learning system statistics"""
+    try:
+        from interest_learner import InterestLearner
+        learner = InterestLearner(db.db_path)
+        stats = learner.get_learning_stats()
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        print(f"❌ Error getting learning stats: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/learning/run")
+async def trigger_learning():
+    """Manually trigger the interest learning cycle"""
+    try:
+        from interest_learner import InterestLearner
+        learner = InterestLearner(db.db_path)
+        results = learner.run_learning_cycle(days_back=30)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        print(f"❌ Error running learning cycle: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/analytics", response_class=HTMLResponse)
