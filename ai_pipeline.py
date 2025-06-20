@@ -152,9 +152,10 @@ class CostOptimizedAI:
         """Generate hash for content to enable caching"""
         return hashlib.md5(content.encode()).hexdigest()[:12]
     
-    def is_relevant_story_local(self, story_data: Dict) -> Tuple[bool, float, str]:
+    def is_relevant_story_local(self, story_data: Dict, user_interests: Optional[Dict] = None) -> Tuple[bool, float, str]:
         """
         Fast local relevance filtering using embeddings
+        Now supports user-specific interests for multi-user filtering
         Returns (is_relevant, confidence_score, reasoning)
         """
         title = story_data.get('title', '')
@@ -171,8 +172,14 @@ class CostOptimizedAI:
         best_match = ""
         best_category = ""
         
+        # Use user-specific interests if provided, otherwise fall back to defaults
+        interests_to_use = self.interest_embeddings
+        if user_interests:
+            # Recompute embeddings for user-specific interests
+            interests_to_use = self._compute_user_interest_embeddings(user_interests)
+        
         # Compare against all interest categories
-        for category, data in self.interest_embeddings.items():
+        for category, data in interests_to_use.items():
             similarities = cosine_similarity(story_embedding, data['embeddings'])[0]
             max_sim_in_category = np.max(similarities)
             
@@ -199,7 +206,7 @@ class CostOptimizedAI:
         
         return is_relevant, max_similarity, reasoning
     
-    def is_relevant_story_ai_refined(self, story_data: Dict, local_score: float) -> bool:
+    def is_relevant_story_ai_refined(self, story_data: Dict, local_score: float, user_interests: Optional[Dict] = None) -> bool:
         """
         Use OpenAI for edge cases where local filtering is uncertain
         Only called for stories with medium confidence scores
@@ -212,8 +219,14 @@ class CostOptimizedAI:
             return local_score > 0.35  # Use local decision
         
         try:
+            # Build interest description from user interests or defaults
+            if user_interests:
+                interest_desc = self._build_interest_description(user_interests)
+            else:
+                interest_desc = "AI/ML, tech startups, software development, mathematics, behavioral economics"
+            
             prompt = f"""
-            Quick relevance check for someone interested in: AI/ML, tech startups, software development, mathematics, behavioral economics.
+            Quick relevance check for someone interested in: {interest_desc}.
             
             Story: "{title}"
             URL: {url}
@@ -671,6 +684,68 @@ class CostOptimizedAI:
             "estimated_money_spent": round(money_spent, 3),
             "cache_size": len(self.article_cache)
         }
+    
+    def _compute_user_interest_embeddings(self, user_interests: Dict) -> Dict:
+        """
+        Compute embeddings for user-specific interests
+        Expected format: {'high_priority': ['keyword1', 'keyword2'], 'medium_priority': [...], ...}
+        Or database format: [UserInterestWeight objects]
+        """
+        interest_embeddings = {}
+        
+        # Handle both dict format and database object format
+        if isinstance(list(user_interests.values())[0], list):
+            # Dictionary format from form data
+            weight_mapping = {
+                "high_priority": 1.0,
+                "medium_priority": 0.6,
+                "low_priority": 0.3
+            }
+            
+            for category, keywords in user_interests.items():
+                if keywords:  # Only process non-empty categories
+                    embeddings = self.embedding_model.encode(keywords)
+                    interest_embeddings[category] = {
+                        'embeddings': embeddings,
+                        'keywords': keywords,
+                        'weight': weight_mapping.get(category, 0.5)
+                    }
+        else:
+            # Database UserInterestWeight objects format
+            categories = {}
+            for interest in user_interests:
+                if interest.category not in categories:
+                    categories[interest.category] = {
+                        'keywords': [],
+                        'weights': []
+                    }
+                categories[interest.category]['keywords'].append(interest.keyword)
+                categories[interest.category]['weights'].append(interest.weight)
+            
+            for category, data in categories.items():
+                embeddings = self.embedding_model.encode(data['keywords'])
+                avg_weight = sum(data['weights']) / len(data['weights'])
+                interest_embeddings[category] = {
+                    'embeddings': embeddings,
+                    'keywords': data['keywords'],
+                    'weight': avg_weight
+                }
+        
+        return interest_embeddings
+    
+    def _build_interest_description(self, user_interests: Dict) -> str:
+        """Build a natural language description of user interests for AI prompts"""
+        if isinstance(list(user_interests.values())[0], list):
+            # Dictionary format
+            all_interests = []
+            for category, keywords in user_interests.items():
+                if keywords:
+                    all_interests.extend(keywords)
+            return ", ".join(all_interests[:10])  # Limit to first 10 for prompt length
+        else:
+            # Database objects format
+            keywords = [interest.keyword for interest in user_interests[:10]]
+            return ", ".join(keywords)
 
 def test_cost_optimization():
     """Test the cost-optimized pipeline"""

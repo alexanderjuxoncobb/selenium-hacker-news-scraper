@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Analytics - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    📊 Analytics Dashboard
+                </h1>
+                <p class="mt-1 text-sm text-gray-600">
+                    System-wide analytics and user engagement metrics
+                </p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="/admin/users" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-users mr-2"></i>Users
+                </a>
+                <button onclick="triggerMultiUserScrape()" id="scrapeButton" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+                    <i class="fas fa-play mr-2"></i>Run Scraping
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-users text-blue-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Total Users</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ total_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-user-check text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Active Users (7d)</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ active_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-percentage text-purple-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Activity Rate</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ "%.1f"|format(user_activity_rate) }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-mouse-pointer text-orange-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Avg Interactions</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ "%.1f"|format(avg_interactions_per_user) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Stories Stats -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">📈 Recent Stories (Last 7 Days)</h3>
+                
+                {% if recent_stats %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relevant</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cached</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for day in recent_stats %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {{ day.date }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ day.stats.total_stories }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span class="text-green-600 font-medium">{{ day.stats.relevant_stories }}</span>
+                                    <span class="text-gray-400 ml-1">
+                                        ({{ "%.1f"|format((day.stats.relevant_stories / day.stats.total_stories * 100) if day.stats.total_stories > 0 else 0) }}%)
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ day.stats.cached_stories or 0 }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-chart-line text-gray-400 text-3xl mb-2"></i>
+                    <p class="text-gray-500">No recent stats available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Top User Engagement -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">🏆 Most Engaged Users (7d)</h3>
+                
+                {% if user_engagement %}
+                <div class="space-y-3">
+                    {% for engagement in user_engagement %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8">
+                                <div class="h-8 w-8 rounded-full bg-hn-orange flex items-center justify-center">
+                                    <span class="text-xs font-medium text-white">
+                                        {{ (engagement.user.name or engagement.user.email)[0].upper() }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ engagement.user.name or "Unnamed User" }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ engagement.user.email }}
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    {{ engagement.interests_count }} interests
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-semibold text-gray-900">
+                                {{ engagement.interactions }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                interactions
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-trophy text-gray-400 text-3xl mb-2"></i>
+                    <p class="text-gray-500">No user engagement data yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Availability -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">📅 Data Availability</h3>
+            
+            {% if available_dates %}
+            <div class="flex flex-wrap gap-2">
+                {% for date in available_dates[:14] %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {{ date }}
+                </span>
+                {% endfor %}
+                {% if available_dates|length > 14 %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    +{{ available_dates|length - 14 }} more days
+                </span>
+                {% endif %}
+            </div>
+            <p class="text-sm text-gray-600 mt-3">
+                Total: {{ available_dates|length }} days of data available
+            </p>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-calendar-times text-gray-400 text-3xl mb-2"></i>
+                <p class="text-gray-500">No scraped data available</p>
+                <p class="text-sm text-gray-400 mt-1">Run scraping to collect stories</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function triggerMultiUserScrape() {
+    const button = document.getElementById('scrapeButton');
+    const originalContent = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Starting...';
+    button.disabled = true;
+    
+    fetch('/admin/run-multi-user-scrape', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'started') {
+            button.innerHTML = '<i class="fas fa-check mr-2"></i>Started!';
+            showToast('Multi-user scraping started in background', 'success');
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error(data.message || 'Failed to start scraping');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to start scraping: ' + error.message, 'error');
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    });
+}
+</script>
+{% endblock %}

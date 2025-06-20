@@ -18,6 +18,22 @@
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* SPA transition effects */
+        main {
+            transition: opacity 0.2s ease-in-out;
+        }
+        
+        /* Loading state */
+        .loading {
+            pointer-events: none;
+        }
+        
+        /* Active navigation styling */
+        .nav-link.active {
+            border-bottom: 2px solid #ff6600 !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Navigation -->
@@ -32,18 +48,27 @@
                         </h1>
                     </div>
                     <div class="hidden md:ml-6 md:flex md:space-x-8">
-                        <a href="/" class="nav-link {% block nav_dashboard %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        {% if user %}
+                        <a href="/dashboard/{{ user.user_id }}" class="nav-link {% block nav_dashboard %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-home mr-1"></i>Dashboard
                         </a>
-                        <a href="/interests" class="nav-link {% block nav_interests %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/interests/{{ user.user_id }}" class="nav-link {% block nav_interests %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-heart mr-1"></i>Interests
                         </a>
-                        <a href="/saved" class="nav-link {% block nav_saved %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/saved/{{ user.user_id }}" class="nav-link {% block nav_saved %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-bookmark mr-1"></i>Saved
                         </a>
-                        <a href="/analytics" class="nav-link {% block nav_analytics %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/analytics/{{ user.user_id }}" class="nav-link {% block nav_analytics %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-chart-line mr-1"></i>Analytics
                         </a>
+                        <a href="/admin/users" class="nav-link text-gray-500 hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                            <i class="fas fa-users mr-1"></i>Admin
+                        </a>
+                        {% else %}
+                        <a href="/" class="nav-link {% block nav_home %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                            <i class="fas fa-home mr-1"></i>Home
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="flex items-center">
@@ -158,7 +183,8 @@
             
             // If toggling off, remove the interaction
             if (!newState) {
-                fetch(`/api/interaction/${storyId}/${interactionType}`, {
+                const userId = window.currentUserId || 'unknown';
+                fetch(`/api/interaction/${userId}/${storyId}/${interactionType}`, {
                     method: 'DELETE'
                 })
                 .then(response => response.json())
@@ -193,7 +219,8 @@
             const formData = new FormData();
             formData.append('interaction_type', interactionType);
             
-            fetch(`/api/interaction/${storyId}`, {
+            const userId = window.currentUserId || 'unknown';
+            fetch(`/api/interaction/${userId}/${storyId}`, {
                 method: 'POST',
                 body: formData
             })

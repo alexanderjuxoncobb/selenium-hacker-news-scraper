@@ -5,6 +5,10 @@
 {% block nav_dashboard %}text-gray-900{% endblock %}
 
 {% block content %}
+<script>
+    // Set user ID for JavaScript API calls
+    window.currentUserId = "{{ user.user_id }}";
+</script>
 <div class="px-4 sm:px-0">
     <!-- Header with date navigation -->
     <div class="mb-6">
@@ -24,13 +28,13 @@
             <!-- Date Navigation -->
             <div class="flex items-center space-x-2">
                 {% if prev_date %}
-                <a href="/dashboard/{{ prev_date }}" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <a href="/dashboard/{{ user.user_id }}/{{ prev_date }}" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <i class="fas fa-chevron-left mr-1"></i>
                     Previous
                 </a>
                 {% endif %}
                 
-                <select onchange="window.location.href='/dashboard/' + this.value" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-hn-orange focus:border-hn-orange">
+                <select onchange="window.location.href='/dashboard/{{ user.user_id }}/' + this.value" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-hn-orange focus:border-hn-orange">
                     {% for date in available_dates %}
                     <option value="{{ date }}" {% if date == target_date %}selected{% endif %}>
                         {{ date }}
@@ -39,7 +43,7 @@
                 </select>
                 
                 {% if next_date %}
-                <a href="/dashboard/{{ next_date }}" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <a href="/dashboard/{{ user.user_id }}/{{ next_date }}" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     Next
                     <i class="fas fa-chevron-right ml-1"></i>
                 </a>
@@ -162,10 +166,10 @@
                 <!-- Personal Notes (if any) -->
                 <div id="story-notes-{{ story.id }}" class="mb-4" style="display: none;">
                     <h4 class="text-sm font-medium text-gray-700 mb-2">📝 Your Notes</h4>
-                    <div class="bg-gray-50 border border-gray-200 rounded-md p-3">
+                    <div class="bg-gray-50 border border-orange-200 rounded-md p-3">
                         <p id="story-notes-text-{{ story.id }}" class="text-sm text-gray-700 whitespace-pre-wrap"></p>
                         <div class="mt-2 pt-2 border-t border-gray-200">
-                            <a href="/saved" class="text-xs text-hn-orange hover:text-orange-600 font-medium">
+                            <a href="/saved/{{ user.user_id }}" class="text-xs text-hn-orange hover:text-orange-600 font-medium">
                                 View in Saved Stories to edit →
                             </a>
                         </div>
@@ -452,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const storyId = button.dataset.storyId;
         const interactionType = button.dataset.interaction;
         
-        fetch(`/api/interactions/${storyId}`)
+        fetch(`/api/interactions/{{ user.user_id }}/${storyId}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -467,20 +471,26 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(console.error);
     });
     
-    // Load notes for all stories
-    document.querySelectorAll('[id^="story-notes-"]').forEach(notesDiv => {
-        const storyId = notesDiv.id.replace('story-notes-', '');
+    // Load notes for all stories - get story IDs from interaction buttons instead
+    document.querySelectorAll('.interaction-btn[data-story-id]').forEach(button => {
+        const storyId = button.dataset.storyId;
+        if (!storyId || isNaN(parseInt(storyId))) return;
         
-        fetch(`/api/story/${storyId}/notes`)
+        fetch(`/api/story/{{ user.user_id }}/${storyId}/notes`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.notes && data.notes.trim().length > 0) {
+                const notesDiv = document.getElementById(`story-notes-${storyId}`);
                 const notesTextElement = document.getElementById(`story-notes-text-${storyId}`);
-                notesTextElement.textContent = data.notes;
-                notesDiv.style.display = 'block';
+                if (notesDiv && notesTextElement) {
+                    notesTextElement.textContent = data.notes;
+                    notesDiv.style.display = 'block';
+                }
             }
         })
-        .catch(console.error);
+        .catch(error => {
+            console.log(`Notes not found for story ${storyId}:`, error);
+        });
     });
 });
 </script>

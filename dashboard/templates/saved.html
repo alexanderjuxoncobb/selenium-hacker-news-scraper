@@ -92,12 +92,12 @@
                             <!-- Display Notes -->
                             <div id="notes-display-{{ story.id }}" class="mb-3">
                                 {% if story.notes %}
-                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors group" 
+                                <div class="bg-gray-50 border border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-25 hover:border-orange-300 transition-colors group" 
                                      onclick="toggleNotes({{ story.id }})" 
                                      title="Click to edit notes">
                                     <div class="flex items-start justify-between">
                                         <p id="notes-text-{{ story.id }}" class="text-sm text-gray-800 whitespace-pre-wrap flex-1 pr-2">{{ story.notes }}</p>
-                                        <i class="fas fa-edit text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                                        <i class="fas fa-edit text-gray-400 group-hover:text-hn-orange transition-colors"></i>
                                     </div>
                                 </div>
                                 {% else %}
@@ -117,7 +117,7 @@
                             <!-- Edit Notes Form -->
                             <div id="notes-edit-{{ story.id }}" class="hidden">
                                 <textarea id="notes-textarea-{{ story.id }}" 
-                                          class="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-hn-orange focus:border-hn-orange"
+                                          class="w-full border border-gray-300 rounded-md p-3 text-sm hover:border-hn-orange focus:border-hn-orange focus:outline-none transition-colors"
                                           rows="4" 
                                           placeholder="Add your personal notes about this story..."
                                           onkeydown="handleNotesKeydown(event, {{ story.id }})">{{ story.notes or '' }}</textarea>
@@ -138,6 +138,158 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Comments Analysis -->
+                        {% if story.comments_analysis and story.comments_analysis.total_comments_analyzed > 0 %}
+                        <div class="border-t pt-4 mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">
+                                💬 Discussion Analysis ({{ story.comments_analysis.total_comments_analyzed }} comments)
+                            </h4>
+                            
+                            {% if story.comments_analysis.main_themes %}
+                            <div class="mb-2">
+                                <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Main Themes:</span>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    {% for theme in story.comments_analysis.main_themes[:5] %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ theme }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Enhanced Community Analysis -->
+                            {% if story.comments_analysis.detailed_technical_analysis or story.comments_analysis.detailed_cost_analysis %}
+                            <div class="space-y-3">
+                                
+                                <!-- Technical Details -->
+                                {% if story.comments_analysis.detailed_technical_analysis %}
+                                {% set tech = story.comments_analysis.detailed_technical_analysis %}
+                                {% if tech.specific_numbers and tech.specific_numbers|length > 0 and tech.specific_numbers != [''] %}
+                                <div class="bg-blue-50 rounded-md p-3">
+                                    <h5 class="text-xs font-semibold text-blue-700 mb-2">🔧 Technical Details:</h5>
+                                    <div class="mb-2">
+                                        <span class="text-xs font-medium text-blue-600">Metrics:</span>
+                                        <ul class="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                            {% for item in tech.specific_numbers[:3] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% if tech.performance_data and tech.performance_data|length > 0 and tech.performance_data != [''] %}
+                                    <div>
+                                        <span class="text-xs font-medium text-blue-600">Performance:</span>
+                                        <ul class="text-xs text-blue-700 list-disc list-inside space-y-1">
+                                            {% for item in tech.performance_data[:2] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+
+                                <!-- Cost Analysis -->
+                                {% if story.comments_analysis.detailed_cost_analysis %}
+                                {% set cost = story.comments_analysis.detailed_cost_analysis %}
+                                {% if (cost.price_comparisons and cost.price_comparisons|length > 0 and cost.price_comparisons != ['']) or (cost.efficiency_gains and cost.efficiency_gains|length > 0 and cost.efficiency_gains != ['']) %}
+                                <div class="bg-green-50 rounded-md p-3">
+                                    <h5 class="text-xs font-semibold text-green-700 mb-2">💰 Cost Analysis:</h5>
+                                    {% if cost.price_comparisons and cost.price_comparisons|length > 0 and cost.price_comparisons != [''] %}
+                                    <div class="mb-2">
+                                        <span class="text-xs font-medium text-green-600">Pricing:</span>
+                                        <ul class="text-xs text-green-700 list-disc list-inside space-y-1">
+                                            {% for item in cost.price_comparisons[:2] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if cost.efficiency_gains and cost.efficiency_gains|length > 0 and cost.efficiency_gains != [''] %}
+                                    <div>
+                                        <span class="text-xs font-medium text-green-600">Efficiency:</span>
+                                        <ul class="text-xs text-green-700 list-disc list-inside space-y-1">
+                                            {% for item in cost.efficiency_gains[:2] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+
+                                <!-- Community Consensus -->
+                                {% if story.comments_analysis.detailed_consensus %}
+                                {% set consensus = story.comments_analysis.detailed_consensus %}
+                                {% if (consensus.strong_agreements and consensus.strong_agreements|length > 0 and consensus.strong_agreements != ['']) or (consensus.major_disagreements and consensus.major_disagreements|length > 0 and consensus.major_disagreements != ['']) %}
+                                <div class="bg-yellow-50 rounded-md p-3">
+                                    <h5 class="text-xs font-semibold text-yellow-700 mb-2">🤝 Community Consensus:</h5>
+                                    {% if consensus.strong_agreements and consensus.strong_agreements|length > 0 and consensus.strong_agreements != [''] %}
+                                    <div class="mb-2">
+                                        <span class="text-xs font-medium text-yellow-600">Agreements:</span>
+                                        <ul class="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                                            {% for item in consensus.strong_agreements[:2] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if consensus.major_disagreements and consensus.major_disagreements|length > 0 and consensus.major_disagreements != [''] %}
+                                    <div>
+                                        <span class="text-xs font-medium text-yellow-600">Disagreements:</span>
+                                        <ul class="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                                            {% for item in consensus.major_disagreements[:2] %}
+                                            <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+
+                                <!-- Success Stories & Recommendations -->
+                                {% if story.comments_analysis.detailed_success_stories or story.comments_analysis.detailed_recommendations %}
+                                {% set stories_data = story.comments_analysis.detailed_success_stories %}
+                                {% set recommendations = story.comments_analysis.detailed_recommendations %}
+                                {% if (stories_data and stories_data.working_setups) or (recommendations and recommendations.actionable_advice) %}
+                                <div class="bg-purple-50 rounded-md p-3">
+                                    <h5 class="text-xs font-semibold text-purple-700 mb-2">✅ Practical Insights:</h5>
+                                    {% if stories_data and stories_data.working_setups %}
+                                    <div class="mb-2">
+                                        <span class="text-xs font-medium text-purple-600">Working Setups:</span>
+                                        <p class="text-xs text-purple-700">{{ ', '.join(stories_data.working_setups[:2]) }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if recommendations and recommendations.actionable_advice %}
+                                    <div>
+                                        <span class="text-xs font-medium text-purple-600">Recommendations:</span>
+                                        <p class="text-xs text-purple-700">{{ ', '.join(recommendations.actionable_advice[:2]) }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+
+                            </div>
+                            {% elif story.comments_analysis.sentiment_summary %}
+                            <p class="text-sm text-gray-600 mb-2">
+                                <span class="font-medium">Community Sentiment:</span> {{ story.comments_analysis.sentiment_summary }}
+                            </p>
+                            {% endif %}
+
+                            <!-- Top Comment Summary (AI-generated only) -->
+                            {% if story.comments_analysis.top_comment_summary %}
+                            <div class="mt-3 bg-gray-50 rounded-md p-3">
+                                <p class="text-xs font-medium text-gray-500 mb-1">Top Comment Summary{% if story.comments_analysis.top_comments and story.comments_analysis.top_comments|length > 0 %} (by {{ story.comments_analysis.top_comments[0].author }}){% endif %}:</p>
+                                <p class="text-sm text-gray-700 italic">{{ story.comments_analysis.top_comment_summary }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
 
                         <!-- Action Buttons -->
                         <div class="flex items-center justify-between pt-4 border-t mt-4">
@@ -429,14 +581,14 @@ async function saveNotes(storyId) {
         if (data.status === 'saved') {
             // Update the display based on whether notes exist
             if (notes.trim()) {
-                // Show notes in blue box
+                // Show notes in gray box
                 display.innerHTML = `
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors group" 
+                    <div class="bg-gray-50 border border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-25 hover:border-orange-300 transition-colors group" 
                          onclick="toggleNotes(${storyId})" 
                          title="Click to edit notes">
                         <div class="flex items-start justify-between">
                             <p id="notes-text-${storyId}" class="text-sm text-gray-800 whitespace-pre-wrap flex-1 pr-2">${notes}</p>
-                            <i class="fas fa-edit text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                            <i class="fas fa-edit text-gray-400 group-hover:text-hn-orange transition-colors"></i>
                         </div>
                     </div>
                 `;

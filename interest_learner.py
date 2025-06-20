@@ -404,6 +404,34 @@ class InterestLearner:
             """)
             total_feedback = cursor.fetchone()[0]
             
+            # Get positive feedback count
+            cursor.execute("""
+                SELECT COUNT(*) FROM user_interactions 
+                WHERE interaction_type = 'thumbs_up'
+            """)
+            positive_feedback = cursor.fetchone()[0]
+            
+            # Get negative feedback count
+            cursor.execute("""
+                SELECT COUNT(*) FROM user_interactions 
+                WHERE interaction_type = 'thumbs_down'
+            """)
+            negative_feedback = cursor.fetchone()[0]
+            
+            # Get unique stories with feedback
+            cursor.execute("""
+                SELECT COUNT(DISTINCT story_id) FROM user_interactions 
+                WHERE interaction_type IN ('thumbs_up', 'thumbs_down')
+            """)
+            unique_stories_with_feedback = cursor.fetchone()[0]
+            
+            # Get users with feedback
+            cursor.execute("""
+                SELECT COUNT(DISTINCT user_id) FROM user_interactions 
+                WHERE interaction_type IN ('thumbs_up', 'thumbs_down')
+            """)
+            users_with_feedback = cursor.fetchone()[0]
+            
             # Get recent interactions (last 7 days)
             cursor.execute("""
                 SELECT COUNT(*) FROM user_interactions 
@@ -439,6 +467,10 @@ class InterestLearner:
         
         return {
             "total_feedback": total_feedback,
+            "positive_feedback": positive_feedback,
+            "negative_feedback": negative_feedback,
+            "unique_stories_with_feedback": unique_stories_with_feedback,
+            "users_with_feedback": users_with_feedback,
             "recent_feedback": recent_feedback,
             "recent_updates": recent_updates,
             "pending_suggestions": pending_suggestions,

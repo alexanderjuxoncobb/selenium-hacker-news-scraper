@@ -153,16 +153,17 @@ class EnhancedHackerNewsScraper:
             print(f"❌ Error extracting story data: {str(e)}")
             return None
     
-    def is_relevant_story(self, story_data: Dict) -> bool:
+    def is_relevant_story(self, story_data: Dict, user_interests: Optional[Dict] = None) -> bool:
         """
         Cost-optimized relevance filtering using local embeddings + AI refinement
+        Now supports user-specific interests for multi-user filtering
         """
         # Use local embedding-based filtering first
-        is_relevant_local, confidence_score, reasoning = self.ai.is_relevant_story_local(story_data)
+        is_relevant_local, confidence_score, reasoning = self.ai.is_relevant_story_local(story_data, user_interests)
         
         # For uncertain cases, use AI refinement
         if 0.3 <= confidence_score <= 0.5:
-            is_relevant = self.ai.is_relevant_story_ai_refined(story_data, confidence_score)
+            is_relevant = self.ai.is_relevant_story_ai_refined(story_data, confidence_score, user_interests)
         else:
             is_relevant = is_relevant_local
         
@@ -499,9 +500,51 @@ class EnhancedHackerNewsScraper:
         
         return "\n".join(email_parts)
     
-    def process_daily_stories(self) -> Dict:
-        """Main function to process daily stories with cost optimization"""
-        print("🚀 Starting enhanced daily Hacker News scraping...")
+    def extract_story_tags(self, story_data: Dict) -> List[str]:
+        """
+        Extract semantic tags from story title and content for better categorization
+        """
+        title = story_data.get('title', '').lower()
+        
+        # Common tech/business categories for HN stories
+        category_keywords = {
+            'ai': ['ai', 'artificial intelligence', 'machine learning', 'ml', 'neural', 'gpt', 'llm', 'chatgpt', 'openai'],
+            'startup': ['startup', 'ycombinator', 'yc', 'funding', 'series a', 'series b', 'ipo', 'acquisition'],
+            'programming': ['programming', 'code', 'software', 'development', 'python', 'javascript', 'rust', 'go', 'java'],
+            'web': ['web', 'browser', 'frontend', 'backend', 'api', 'http', 'css', 'html'],
+            'mobile': ['mobile', 'ios', 'android', 'app', 'iphone', 'smartphone'],
+            'security': ['security', 'hacking', 'vulnerability', 'breach', 'crypto', 'encryption'],
+            'hardware': ['hardware', 'chip', 'processor', 'cpu', 'gpu', 'semiconductor'],
+            'science': ['research', 'study', 'paper', 'university', 'science', 'physics', 'biology'],
+            'business': ['business', 'market', 'revenue', 'profit', 'economics', 'finance'],
+            'politics': ['politics', 'government', 'policy', 'regulation', 'law', 'legal'],
+            'climate': ['climate', 'environment', 'energy', 'solar', 'renewable', 'carbon'],
+            'space': ['space', 'nasa', 'spacex', 'satellite', 'mars', 'rocket']
+        }
+        
+        tags = []
+        for category, keywords in category_keywords.items():
+            if any(keyword in title for keyword in keywords):
+                tags.append(category)
+        
+        # If no specific tags found, try to infer from common patterns
+        if not tags:
+            if any(word in title for word in ['show hn', 'ask hn']):
+                tags.append('community')
+            elif any(word in title for word in ['new', 'launch', 'release', 'introduce']):
+                tags.append('product')
+            elif any(word in title for word in ['why', 'how', 'what', 'guide', 'tutorial']):
+                tags.append('educational')
+        
+        return tags or ['general']  # Always have at least one tag
+    
+    def process_daily_stories(self, user_interests: Optional[Dict] = None) -> Dict:
+        """
+        Main function to process daily stories with cost optimization
+        Now supports user-specific interests for multi-user filtering
+        """
+        user_desc = "personalized" if user_interests else "default"
+        print(f"🚀 Starting enhanced daily Hacker News scraping with {user_desc} interests...")
         
         # Print initial cost report
         initial_report = self.ai.get_cost_report()
@@ -520,8 +563,13 @@ class EnhancedHackerNewsScraper:
             # Track initial API call count to detect cache usage
             initial_api_calls = self.ai.api_calls_made
             
-            # Check if story is relevant using cost-optimized filtering
-            if self.is_relevant_story(story):
+            # Extract story tags for better categorization
+            story_tags = self.extract_story_tags(story)
+            story['tags'] = story_tags
+            print(f"🏷️ Story tags: {', '.join(story_tags)}")
+            
+            # Check if story is relevant using cost-optimized filtering (with user-specific interests)
+            if self.is_relevant_story(story, user_interests):
                 relevant_count += 1
                 print(f"✅ Story marked as relevant ({relevant_count}/30)")
                 
@@ -548,10 +596,13 @@ class EnhancedHackerNewsScraper:
                     "article_summary": article_summary,
                     "comments_analysis": comments_analysis,
                     "actionable_insights": actionable_insights,
-                    "is_relevant": True
+                    "is_relevant": True,
+                    "tags": story_tags  # Ensure tags are included
                 })
             else:
                 story["is_relevant"] = False
+                # Still include tags for filtered stories for potential user-specific filtering
+                story["tags"] = story_tags
             
             # Check if this story required any new API calls (not cached)
             was_cached = self.ai.api_calls_made == initial_api_calls
@@ -595,6 +646,128 @@ class EnhancedHackerNewsScraper:
         print(f"🔄 API calls: {final_report['api_calls_made']} made, {final_report['api_calls_saved']} saved")
         
         return result
+    
+    def process_multi_user_daily_stories(self, users_with_interests: list) -> Dict:
+        """
+        Process daily stories for multiple users with personalized filtering
+        
+        Args:
+            users_with_interests: List of tuples (user, user_interests)
+            
+        Returns:
+            Dict with overall stats and per-user digest data
+        """
+        print(f"🚀 Starting multi-user enhanced HN scraping for {len(users_with_interests)} users...")
+        
+        # Get initial cost report
+        initial_report = self.ai.get_cost_report()
+        print(f"💰 Starting with {initial_report['cache_size']} cached summaries")
+        
+        # Scrape top 30 stories once (shared across all users)
+        print("📰 Scraping top 30 stories...")
+        all_stories = self.scrape_top_stories(30)
+        
+        # Process stories once for global analysis
+        print("🔍 Processing stories for global analysis...")
+        processed_stories = []
+        
+        for story in all_stories:
+            print(f"  📰 Processing: {story['title'][:50]}...")
+            
+            # Extract story tags for better categorization
+            story_tags = self.extract_story_tags(story)
+            story['tags'] = story_tags
+            
+            # Get article summary if it's an external link
+            article_summary = None
+            if not story['url'].startswith('https://news.ycombinator.com'):
+                print("    📄 Getting article summary...")
+                article_summary = self.get_article_summary(story['url'])
+            
+            # Analyze comments (shared analysis)
+            print("    💬 Analyzing comments...")
+            comments_analysis = self.analyze_comments(story['hn_discussion_url'])
+            
+            # Analyze for actionable insights
+            print("    🔍 Analyzing actionable insights...")
+            actionable_insights = self.insights_analyzer.analyze_story_for_insights({
+                **story,
+                "article_summary": article_summary,
+                "comments_analysis": comments_analysis
+            })
+            
+            # Add processed data to story
+            story.update({
+                "article_summary": article_summary,
+                "comments_analysis": comments_analysis,
+                "actionable_insights": actionable_insights,
+                "tags": story_tags
+            })
+            
+            processed_stories.append(story)
+        
+        # Generate personalized digests for each user
+        print(f"👥 Generating personalized digests for {len(users_with_interests)} users...")
+        users_digest_data = []
+        
+        for user, user_interests in users_with_interests:
+            print(f"  🎯 Processing for user: {user.name or user.email}")
+            
+            # Filter stories for this user's interests
+            user_relevant_stories = []
+            for story in processed_stories:
+                if self.is_relevant_story(story, user_interests):
+                    story_copy = story.copy()
+                    story_copy['is_relevant'] = True
+                    user_relevant_stories.append(story_copy)
+                else:
+                    story_copy = story.copy()
+                    story_copy['is_relevant'] = False
+            
+            # Create user-specific digest data
+            user_digest_data = {
+                "scrape_date": datetime.now().isoformat(),
+                "total_stories": len(processed_stories),
+                "total_scraped": len(processed_stories),
+                "relevant_stories": len(user_relevant_stories),
+                "stories": user_relevant_stories,
+                "cost_optimization": self.ai.get_cost_report(),
+                "user_id": user.user_id,
+                "user_name": user.name,
+                "user_email": user.email
+            }
+            
+            users_digest_data.append({
+                "user": user,
+                "digest_data": user_digest_data,
+                "user_email": user.email
+            })
+            
+            print(f"    ✅ Found {len(user_relevant_stories)} relevant stories for {user.name or user.email}")
+        
+        # Generate overall summary
+        total_relevant_across_users = sum(len([s for s in data["digest_data"]["stories"] if s.get("is_relevant", False)]) 
+                                        for data in users_digest_data)
+        
+        final_cost_report = self.ai.get_cost_report()
+        processing_time = "N/A"  # Could implement timing if needed
+        
+        overall_summary = {
+            "scrape_date": datetime.now().isoformat(),
+            "total_stories": len(processed_stories),
+            "total_users": len(users_with_interests),
+            "total_relevant_across_all_users": total_relevant_across_users,
+            "avg_relevant_per_user": total_relevant_across_users / len(users_with_interests) if users_with_interests else 0,
+            "processing_time": processing_time,
+            "cost_optimization": final_cost_report,
+            "users_digest_data": users_digest_data
+        }
+        
+        print(f"✅ Multi-user processing complete!")
+        print(f"📊 Summary: {len(processed_stories)} total stories, avg {overall_summary['avg_relevant_per_user']:.1f} relevant per user")
+        print(f"💰 Cost optimization: {final_cost_report.get('savings_percentage', 0)}% saved")
+        
+        return overall_summary
     
     def save_to_json(self, data: Dict, filename: str = None):
         """Save scraped data to JSON file"""

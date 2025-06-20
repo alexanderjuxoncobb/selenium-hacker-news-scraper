@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Hacker News Scraper - Get Your Personal Daily Digest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'hn-orange': '#ff6600',
+                        'hn-gray': '#828282'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Hero Section -->
+    <div class="bg-white border-b">
+        <div class="max-w-7xl mx-auto px-4 py-16">
+            <div class="text-center max-w-4xl mx-auto">
+                <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-robot text-hn-orange mr-3"></i>
+                    Never Miss a Relevant HN Story
+                </h1>
+                <p class="text-xl text-gray-600 mb-8">
+                    AI-powered personalized Hacker News digests delivered to your inbox daily. 
+                    Our smart filtering ensures you only see stories that matter to you.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a 
+                        href="/setup" 
+                        class="bg-hn-orange text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-orange-600 transition duration-200 shadow-lg"
+                    >
+                        <i class="fas fa-rocket mr-2"></i>Get Started Free
+                    </a>
+                    <a 
+                        href="#features" 
+                        class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-50 transition duration-200"
+                    >
+                        <i class="fas fa-info-circle mr-2"></i>Learn More
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Problem Statement -->
+    <div class="max-w-7xl mx-auto px-4 py-16">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">The Problem with Hacker News</h2>
+            <div class="grid md:grid-cols-3 gap-8 mb-12">
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clock text-2xl text-hn-gray"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Too Time-Consuming</h3>
+                    <p class="text-gray-600">Scrolling through 30+ stories daily takes 15-30 minutes</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-bullseye text-2xl text-hn-gray"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Not Personalized</h3>
+                    <p class="text-gray-600">Most stories aren't relevant to your specific interests</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-sync-alt text-2xl text-hn-gray"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Inconsistent Checking</h3>
+                    <p class="text-gray-600">Easy to forget to check and miss important stories</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div id="features" class="bg-white py-16 border-t">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Our AI-powered system does the heavy lifting so you get only what matters
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-spider text-2xl text-hn-orange"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Daily Scraping</h3>
+                    <p class="text-gray-600 text-sm">We automatically scrape all top HN stories every morning</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-robot text-2xl text-hn-orange"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">AI Analysis</h3>
+                    <p class="text-gray-600 text-sm">Our AI analyzes content and matches it to your interests</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-magic text-2xl text-hn-orange"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Smart Summaries</h3>
+                    <p class="text-gray-600 text-sm">Get key insights and actionable takeaways, not just headlines</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-envelope text-2xl text-hn-orange"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-900 mb-2">Email Delivery</h3>
+                    <p class="text-gray-600 text-sm">Personalized digest delivered to your inbox with dashboard link</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="bg-gray-50 py-16">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-gray-800 text-center mb-12">Key Benefits</h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="text-2xl mr-3">⚡</span>
+                            Save 80% of Your Time
+                        </h3>
+                        <p class="text-gray-600">
+                            Instead of scrolling through 30 stories, get 3-5 perfectly relevant ones. 
+                            Turn 30 minutes into 5 minutes of focused reading.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="text-2xl mr-3">🎯</span>
+                            Perfectly Personalized
+                        </h3>
+                        <p class="text-gray-600">
+                            Set your interests once and our AI learns from your interactions. 
+                            The more you use it, the better it gets.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="text-2xl mr-3">💰</span>
+                            Cost-Optimized AI
+                        </h3>
+                        <p class="text-gray-600">
+                            75% lower AI costs through local embeddings + OpenAI refinement. 
+                            High-quality results without breaking the bank.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                            <span class="text-2xl mr-3">📱</span>
+                            Mobile-First Dashboard
+                        </h3>
+                        <p class="text-gray-600">
+                            Beautiful web dashboard that works perfectly on phone, tablet, or desktop. 
+                            Access your digest anywhere.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing User Section -->
+    <div class="bg-blue-50 py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Already have an account?</h2>
+            <p class="text-gray-600 mb-6">
+                If you have your unique dashboard URL, you can access it directly:
+            </p>
+            <div class="max-w-md mx-auto">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <p class="text-sm text-gray-600 mb-2">Your dashboard URL looks like:</p>
+                    <code class="text-blue-600 text-sm">/dashboard/your-unique-id</code>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Check your email or bookmark for your personal link
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="bg-hn-orange text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-6">Ready to Transform Your HN Experience?</h2>
+            <p class="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
+                Join others who've already saved hours of time while staying on top of the most relevant tech stories
+            </p>
+            <a 
+                href="/setup" 
+                class="bg-white text-hn-orange px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition duration-200 shadow-lg inline-block"
+            >
+                <i class="fas fa-rocket mr-2"></i>Set Up Your Personal Digest
+            </a>
+            <div class="mt-6 text-orange-100 text-sm">
+                <p><i class="fas fa-check-circle mr-1"></i> Free to use • <i class="fas fa-check-circle mr-1"></i> No spam • <i class="fas fa-check-circle mr-1"></i> Cancel anytime</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">
+                Built with ❤️ using FastAPI, AI, and lots of coffee ☕
+            </p>
+        </div>
+    </div>
+</body>
+</html>

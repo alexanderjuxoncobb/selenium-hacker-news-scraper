@@ -246,9 +246,13 @@ class EmailNotifier:
         
         return "\n".join(text_parts)
     
-    def send_email(self, message: MIMEMultipart) -> bool:
-        """Send email using SMTP"""
+    def send_email(self, message: MIMEMultipart, recipient_email: Optional[str] = None) -> bool:
+        """Send email using SMTP (supports custom recipient)"""
         try:
+            recipient = recipient_email or self.recipient_email
+            if not recipient:
+                raise ValueError("No recipient email specified")
+            
             # Create secure SSL context
             context = ssl.create_default_context()
             
@@ -258,23 +262,93 @@ class EmailNotifier:
                 server.login(self.email_user, self.email_password)
                 
                 text = message.as_string()
-                server.sendmail(self.email_user, self.recipient_email, text)
+                server.sendmail(self.email_user, recipient, text)
             
-            print(f"✅ Email sent successfully to {self.recipient_email}")
+            print(f"✅ Email sent successfully to {recipient}")
             return True
             
         except Exception as e:
             print(f"❌ Error sending email: {str(e)}")
             return False
     
-    def send_daily_digest(self, digest_data: Dict) -> bool:
-        """Send daily digest email"""
+    def send_daily_digest(self, digest_data: Dict, user_email: Optional[str] = None, user_id: Optional[str] = None) -> bool:
+        """Send daily digest email (supports multi-user)"""
         try:
-            message = self.create_daily_digest_email(digest_data)
-            return self.send_email(message)
+            message = self.create_daily_digest_email(digest_data, user_email, user_id)
+            return self.send_email(message, user_email)
         except Exception as e:
             print(f"❌ Error creating/sending daily digest email: {str(e)}")
             return False
+    
+    def send_multi_user_digests(self, users_data: list) -> Dict:
+        """
+        Send personalized digest emails to multiple users
+        
+        Args:
+            users_data: List of dicts with keys: 'user', 'digest_data', 'user_email'
+            
+        Returns:
+            Dict with success/failure counts and details
+        """
+        results = {
+            "total_users": len(users_data),
+            "emails_sent": 0,
+            "emails_failed": 0,
+            "failed_users": [],
+            "success_users": []
+        }
+        
+        print(f"📧 Sending personalized digests to {len(users_data)} users...")
+        
+        for user_data in users_data:
+            user = user_data.get('user')
+            digest_data = user_data.get('digest_data')
+            user_email = user_data.get('user_email', user.email if user else None)
+            user_id = user.user_id if user else None
+            user_name = user.name if user else "User"
+            
+            if not user_email:
+                print(f"⚠️ No email for user {user_name} (ID: {user_id})")
+                results["emails_failed"] += 1
+                results["failed_users"].append({
+                    "user_id": user_id,
+                    "name": user_name,
+                    "reason": "No email address"
+                })
+                continue
+            
+            try:
+                success = self.send_daily_digest(digest_data, user_email, user_id)
+                if success:
+                    results["emails_sent"] += 1
+                    results["success_users"].append({
+                        "user_id": user_id,
+                        "name": user_name,
+                        "email": user_email
+                    })
+                    print(f"✅ Sent digest to {user_name} ({user_email})")
+                else:
+                    results["emails_failed"] += 1
+                    results["failed_users"].append({
+                        "user_id": user_id,
+                        "name": user_name,
+                        "email": user_email,
+                        "reason": "SMTP send failed"
+                    })
+                    print(f"❌ Failed to send digest to {user_name} ({user_email})")
+                    
+            except Exception as e:
+                results["emails_failed"] += 1
+                results["failed_users"].append({
+                    "user_id": user_id,
+                    "name": user_name,
+                    "email": user_email,
+                    "reason": str(e)
+                })
+                print(f"❌ Error sending to {user_name} ({user_email}): {e}")
+        
+        print(f"📊 Email summary: {results['emails_sent']} sent, {results['emails_failed']} failed")
+        return results
     
     def send_test_email(self) -> bool:
         """Send a test email to verify configuration"""

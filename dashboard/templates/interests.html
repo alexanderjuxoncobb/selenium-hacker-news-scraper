@@ -79,7 +79,7 @@
             <p class="text-sm text-gray-500">Add keywords or phrases that interest you to any priority category</p>
         </div>
         <div class="px-6 py-4">
-            <form action="/interests/update" method="post" class="space-y-4">
+            <form action="/interests/{{ user.user_id }}/update" method="post" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="keyword" class="block text-sm font-medium text-gray-700">Keyword/Phrase</label>
@@ -289,7 +289,7 @@ async function deleteInterest(interestId, keyword) {
     if (!confirmed) return;
     
     try {
-        const response = await fetch(`/api/interests/${interestId}`, {
+        const response = await fetch(`/api/interests/{{ user.user_id }}/${interestId}`, {
             method: 'DELETE'
         });
         

@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - User Management - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    👥 User Management
+                </h1>
+                <p class="mt-1 text-sm text-gray-600">
+                    Manage all users and monitor their activity
+                </p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="/admin/analytics" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-chart-line mr-2"></i>Analytics
+                </a>
+                <button onclick="triggerMultiUserScrape()" id="scrapeButton" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+                    <i class="fas fa-play mr-2"></i>Run Scraping
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-users text-blue-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Total Users</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ total_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-user-check text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Active Users</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ users_with_stats|selectattr('total_interactions', 'gt', 0)|list|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-heart text-red-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Avg Interests</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ "%.1f"|format((users_with_stats|sum(attribute='interests_count')/users_with_stats|length) if users_with_stats else 0) }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-mouse-pointer text-purple-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Total Interactions</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ users_with_stats|sum(attribute='total_interactions') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">All Users</h3>
+            
+            {% if users_with_stats %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                User
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Activity
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Interests
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Saved
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Last Active
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for user_stat in users_with_stats %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10">
+                                        <div class="h-10 w-10 rounded-full bg-hn-orange flex items-center justify-center">
+                                            <span class="text-sm font-medium text-white">
+                                                {{ (user_stat.user.name or user_stat.user.email)[0].upper() }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ user_stat.user.name or "Unnamed User" }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ user_stat.user.email }}
+                                        </div>
+                                        <div class="text-xs text-gray-400">
+                                            ID: {{ user_stat.user.user_id[:8] }}...
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <span class="text-sm font-medium text-gray-900">{{ user_stat.total_interactions }}</span>
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {% if user_stat.activity_score == 'High' %}bg-green-100 text-green-800
+                                        {% elif user_stat.activity_score == 'Medium' %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ user_stat.activity_score }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ user_stat.interests_count }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ user_stat.saved_stories_count }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if user_stat.user.last_active_at %}
+                                    {{ user_stat.user.last_active_at[:10] }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="/admin/user/{{ user_stat.user.user_id }}" class="text-hn-orange hover:text-orange-600 mr-3">
+                                    <i class="fas fa-eye mr-1"></i>View
+                                </a>
+                                <a href="/dashboard/{{ user_stat.user.user_id }}" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-external-link-alt mr-1"></i>Dashboard
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-users text-gray-400 text-4xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                <p class="text-gray-500">No users have been registered yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function triggerMultiUserScrape() {
+    const button = document.getElementById('scrapeButton');
+    const originalContent = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Starting...';
+    button.disabled = true;
+    
+    fetch('/admin/run-multi-user-scrape', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'started') {
+            button.innerHTML = '<i class="fas fa-check mr-2"></i>Started!';
+            showToast('Multi-user scraping started in background', 'success');
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error(data.message || 'Failed to start scraping');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to start scraping: ' + error.message, 'error');
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    });
+}
+</script>
+{% endblock %}

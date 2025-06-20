@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - User Detail - HN Scraper{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="flex items-center">
+                    <a href="/admin/users" class="text-gray-500 hover:text-gray-700 mr-3">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">
+                            👤 User Details
+                        </h1>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Detailed view of {{ user.name or "Unnamed User" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="/dashboard/{{ user.user_id }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-external-link-alt mr-2"></i>View Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-16 w-16">
+                    <div class="h-16 w-16 rounded-full bg-hn-orange flex items-center justify-center">
+                        <span class="text-xl font-medium text-white">
+                            {{ (user.name or user.email)[0].upper() }}
+                        </span>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">
+                                {{ user.name or "Unnamed User" }}
+                            </h3>
+                            <p class="text-sm text-gray-500">{{ user.email }}</p>
+                            <p class="text-xs text-gray-400">ID: {{ user.user_id }}</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-gray-500">Member since</div>
+                            <div class="text-sm font-medium text-gray-900">{{ user.created_at[:10] }}</div>
+                            {% if user.last_active_at %}
+                            <div class="text-xs text-gray-500 mt-1">Last active: {{ user.last_active_at[:10] }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-mouse-pointer text-blue-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Total Interactions</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ total_interactions }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-heart text-red-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Interests</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ user_interests|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-bookmark text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Saved Stories</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ saved_stories|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-percentage text-purple-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Engagement</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ "%.1f"|format(engagement_rate) }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- User Interests -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    🎯 User Interests
+                </h3>
+                
+                {% if user_interests %}
+                <div class="space-y-3">
+                    {% for interest in user_interests %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <span class="text-sm font-medium text-gray-900">{{ interest.keyword }}</span>
+                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if interest.category == 'high' %}bg-red-100 text-red-800
+                                {% elif interest.category == 'medium' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ interest.category }}
+                            </span>
+                        </div>
+                        <div class="text-sm font-semibold text-gray-600">
+                            {{ interest.weight }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-heart text-gray-400 text-3xl mb-2"></i>
+                    <p class="text-gray-500">No interests configured</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Interaction Stats -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    📊 Interaction Stats (30d)
+                </h3>
+                
+                {% if interaction_stats %}
+                <div class="space-y-3">
+                    {% for interaction_type, stats in interaction_stats.items() %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center">
+                            {% if interaction_type == 'click' %}
+                                <i class="fas fa-mouse-pointer text-blue-500 mr-3"></i>
+                            {% elif interaction_type == 'save' %}
+                                <i class="fas fa-bookmark text-green-500 mr-3"></i>
+                            {% elif interaction_type == 'thumbs_up' %}
+                                <i class="fas fa-thumbs-up text-green-600 mr-3"></i>
+                            {% elif interaction_type == 'thumbs_down' %}
+                                <i class="fas fa-thumbs-down text-red-600 mr-3"></i>
+                            {% else %}
+                                <i class="fas fa-circle text-gray-500 mr-3"></i>
+                            {% endif %}
+                            <span class="text-sm font-medium text-gray-900 capitalize">
+                                {{ interaction_type.replace('_', ' ') }}
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-semibold text-gray-900">{{ stats.count }}</div>
+                            {% if stats.avg_duration %}
+                            <div class="text-xs text-gray-500">{{ stats.avg_duration }}s avg</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-chart-bar text-gray-400 text-3xl mb-2"></i>
+                    <p class="text-gray-500">No interactions yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Relevant Stories -->
+        <div class="bg-white shadow rounded-lg lg:col-span-2">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    📰 Recent Relevant Stories
+                </h3>
+                
+                {% if recent_relevant_stories %}
+                <div class="space-y-4">
+                    {% for story in recent_relevant_stories %}
+                    <div class="border-l-4 border-hn-orange pl-4 py-2">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h4 class="text-sm font-medium text-gray-900 line-clamp-2">
+                                    <a href="{{ story.url }}" target="_blank" class="hover:text-hn-orange">
+                                        {{ story.title }}
+                                    </a>
+                                </h4>
+                                <div class="mt-1 text-xs text-gray-500">
+                                    <span>{{ story.date }}</span>
+                                    <span class="mx-1">•</span>
+                                    <span>{{ story.points }} points</span>
+                                    <span class="mx-1">•</span>
+                                    <span>{{ story.comments_count }} comments</span>
+                                    {% if story.tags %}
+                                    <span class="mx-1">•</span>
+                                    <span>{{ story.tags|join(', ') }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="ml-4 flex-shrink-0">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    {{ "%.2f"|format(story.relevance_score) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-newspaper text-gray-400 text-3xl mb-2"></i>
+                    <p class="text-gray-500">No relevant stories found recently</p>
+                    <p class="text-sm text-gray-400 mt-1">User may need to refine their interests</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Saved Stories Preview -->
+        {% if saved_stories %}
+        <div class="bg-white shadow rounded-lg lg:col-span-2">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        🔖 Saved Stories
+                    </h3>
+                    <a href="/saved/{{ user.user_id }}" class="text-sm text-hn-orange hover:text-orange-600">
+                        View all {{ saved_stories|length }}
+                    </a>
+                </div>
+                
+                <div class="space-y-3">
+                    {% for story in saved_stories[:5] %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-gray-900 line-clamp-1">
+                                <a href="{{ story.url }}" target="_blank" class="hover:text-hn-orange">
+                                    {{ story.title }}
+                                </a>
+                            </h4>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Saved on {{ story.saved_at[:10] }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

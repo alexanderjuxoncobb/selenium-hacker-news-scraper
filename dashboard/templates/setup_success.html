@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Complete! - AI-Powered Hacker News Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'hn-orange': '#ff6600',
+                        'hn-gray': '#828282'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white border-b">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <h1 class="text-4xl font-bold text-center mb-4 text-gray-900">
+                <i class="fas fa-check-circle text-hn-orange mr-3"></i>You're All Set!
+            </h1>
+            <p class="text-xl text-center text-gray-600 max-w-2xl mx-auto">
+                Your personalized HN digest is ready to go
+            </p>
+        </div>
+    </div>
+
+    <!-- Success Content -->
+    <div class="container mx-auto px-4 py-12">
+        <div class="max-w-2xl mx-auto">
+            <!-- Success Card -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+                <div class="p-8 text-center">
+                    <div class="text-6xl mb-4">✅</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Setup Complete!</h2>
+                    <p class="text-gray-600 mb-6">
+                        Welcome aboard! Your personal HN digest has been created with the following settings:
+                    </p>
+
+                    <!-- User Info -->
+                    <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-gray-700">Email:</span>
+                                <span class="text-gray-900">{{ user.email }}</span>
+                            </div>
+                            {% if user.name %}
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-gray-700">Name:</span>
+                                <span class="text-gray-900">{{ user.name }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-gray-700">User ID:</span>
+                                <span class="text-sm font-mono text-gray-600">{{ user.user_id }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-gray-700">Interests:</span>
+                                <span class="text-gray-900">{{ interest_count }} topics selected</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Important Links -->
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 class="font-medium text-blue-900 mb-2">📱 Your Personal Dashboard</h3>
+                            <p class="text-sm text-blue-700 mb-3">
+                                Access your personalized stories, analytics, and settings:
+                            </p>
+                            <a 
+                                href="/dashboard/{{ user.user_id }}" 
+                                class="inline-block bg-hn-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition duration-200 text-sm font-medium"
+                            >
+                                Open Dashboard
+                            </a>
+                            <div class="mt-3 text-xs text-blue-600">
+                                <strong>Bookmark this link!</strong> You can access your dashboard anytime at:<br>
+                                <code class="bg-blue-100 px-2 py-1 rounded">{{ request.url_root }}dashboard/{{ user.user_id }}</code>
+                            </div>
+                        </div>
+
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h3 class="font-medium text-green-900 mb-2">⚙️ Customize Your Interests</h3>
+                            <p class="text-sm text-green-700 mb-3">
+                                Fine-tune your interests and preferences:
+                            </p>
+                            <a 
+                                href="/interests/{{ user.user_id }}" 
+                                class="inline-block bg-hn-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition duration-200 text-sm font-medium"
+                            >
+                                Manage Interests
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What's Next -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+                <div class="p-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-6">🚀 What happens next?</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-4">
+                            <div class="bg-orange-100 text-hn-orange rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">1</div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Daily Scraping</h4>
+                                <p class="text-sm text-gray-600">We'll scrape Hacker News every morning and analyze all stories with AI</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="bg-orange-100 text-hn-orange rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">2</div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">AI Filtering</h4>
+                                <p class="text-sm text-gray-600">Our AI will match stories to your interests and generate summaries</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="bg-orange-100 text-hn-orange rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">3</div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Email Delivery</h4>
+                                <p class="text-sm text-gray-600">You'll receive a personalized digest with a link to your dashboard</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="bg-orange-100 text-hn-orange rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">4</div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Continuous Learning</h4>
+                                <p class="text-sm text-gray-600">The more you interact with stories, the better our recommendations become</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 class="font-medium text-yellow-900 mb-3">💡 Pro Tips</h3>
+                <ul class="text-sm text-yellow-800 space-y-2">
+                    <li>• <strong>Bookmark your dashboard link</strong> - it's your personal URL that never changes</li>
+                    <li>• <strong>Use thumbs up/down</strong> to help our AI learn your preferences</li>
+                    <li>• <strong>Save interesting stories</strong> to build your personal library</li>
+                    <li>• <strong>Add notes</strong> to stories for future reference</li>
+                    <li>• <strong>Update your interests</strong> anytime to refine your digest</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
