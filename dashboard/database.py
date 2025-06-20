@@ -9,6 +9,7 @@ from datetime import datetime, date
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 import os
+import uuid
 
 @dataclass
 class Story:
@@ -27,14 +28,34 @@ class Story:
     scraped_at: str
     was_cached: bool = False
     comments_analysis: Optional[Dict] = None
+    tags: Optional[List[str]] = None
 
 @dataclass
 class UserInteraction:
     id: Optional[int]
+    user_id: str  # UUID to identify which user
     story_id: int
     interaction_type: str  # 'click', 'read', 'save', 'share', 'thumbs_up', 'thumbs_down'
     timestamp: str
     duration_seconds: Optional[int] = None
+
+@dataclass
+class User:
+    id: Optional[int]
+    user_id: str  # UUID
+    email: str
+    name: Optional[str]
+    created_at: str
+    last_active_at: Optional[str]
+
+@dataclass
+class UserInterestWeight:
+    id: Optional[int]
+    user_id: str  # UUID
+    keyword: str
+    weight: float
+    category: str  # 'high', 'medium', 'low'
+    updated_at: str
 
 @dataclass
 class InterestWeight:
@@ -50,11 +71,26 @@ class DatabaseManager:
         self.init_database()
     
     def init_database(self):
-        """Initialize database with required tables"""
+        """Initialize database with required tables and handle migrations"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Stories table
+            # Check if we need to migrate existing database
+            self._migrate_to_multi_user(cursor)
+            
+            # Users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT UNIQUE NOT NULL,  -- UUID
+                    email TEXT NOT NULL,
+                    name TEXT,
+                    created_at TEXT NOT NULL,
+                    last_active_at TEXT
+                )
+            """)
+            
+            # Stories table (shared across users with tags for better categorization)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS stories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +108,7 @@ class DatabaseManager:
                     relevance_score REAL DEFAULT 0.0,
                     scraped_at TEXT NOT NULL,
                     was_cached BOOLEAN DEFAULT FALSE,  -- Track if story was served from cache
+                    tags TEXT,  -- JSON array of semantic tags for categorization
                     UNIQUE(date, rank)
                 )
             """)
@@ -80,15 +117,31 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_interactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
                     story_id INTEGER NOT NULL,
                     interaction_type TEXT NOT NULL,
                     timestamp TEXT NOT NULL,
                     duration_seconds INTEGER,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
                     FOREIGN KEY (story_id) REFERENCES stories (id)
                 )
             """)
             
-            # Interest weights table
+            # User-specific interest weights table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_interest_weights (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    keyword TEXT NOT NULL,
+                    weight REAL NOT NULL,
+                    category TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, keyword)
+                )
+            """)
+            
+            # Global interest weights table (for default templates)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS interest_weights (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,27 +152,39 @@ class DatabaseManager:
                 )
             """)
             
-            # Story notes table
+            # User-specific story notes table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS story_notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
                     story_id INTEGER NOT NULL,
                     notes TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
                     FOREIGN KEY (story_id) REFERENCES stories (id),
-                    UNIQUE(story_id)
+                    UNIQUE(user_id, story_id)
                 )
             """)
             
-            # Create indexes for better performance
+            conn.commit()
+            
+            # Create indexes for better performance (after tables are created)
+            self._create_indexes(cursor)
+    
+    def _create_indexes(self, cursor):
+        """Create database indexes"""
+        try:
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_user_id ON users (user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_date ON stories (date)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_relevant ON stories (is_relevant)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_user ON user_interactions (user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_story ON user_interactions (story_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_type ON user_interactions (interaction_type)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_story ON story_notes (story_id)")
-            
-            conn.commit()
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_interests_user ON user_interest_weights (user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_user_story ON story_notes (user_id, story_id)")
+        except Exception as e:
+            print(f"⚠️ Index creation warning: {e}")
     
     def import_json_data(self, json_file_path: str):
         """Import data from existing JSON scraping files"""
@@ -139,12 +204,17 @@ class DatabaseManager:
                     if story.get('comments_analysis'):
                         comments_analysis_json = json.dumps(story['comments_analysis'])
                     
+                    # Convert tags to JSON string if it exists
+                    tags_json = None
+                    if story.get('tags'):
+                        tags_json = json.dumps(story['tags'])
+                    
                     cursor.execute("""
                         INSERT OR REPLACE INTO stories 
                         (date, rank, title, url, points, author, comments_count, 
                          hn_discussion_url, article_summary, comments_analysis, 
-                         is_relevant, relevance_score, scraped_at, was_cached)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         is_relevant, relevance_score, scraped_at, was_cached, tags)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         scrape_date,
                         story.get('rank', 0),
@@ -159,7 +229,8 @@ class DatabaseManager:
                         story.get('is_relevant', False),
                         story.get('relevance_score', 1.0 if story.get('is_relevant', False) else 0.0),
                         story.get('scraped_at', data.get('scrape_date', '')),
-                        story.get('was_cached', False)
+                        story.get('was_cached', False),
+                        tags_json
                     ))
                 
                 conn.commit()
@@ -176,7 +247,7 @@ class DatabaseManager:
                 SELECT id, date, rank, title, url, points, author, comments_count,
                        hn_discussion_url, article_summary, comments_analysis,
                        is_relevant, relevance_score, scraped_at, 
-                       COALESCE(was_cached, 0) as was_cached
+                       COALESCE(was_cached, 0) as was_cached, tags
                 FROM stories 
                 WHERE date = ? 
                 ORDER BY rank
@@ -193,13 +264,20 @@ class DatabaseManager:
                     except json.JSONDecodeError:
                         pass
                 
+                tags = None
+                if row[15]:  # tags column
+                    try:
+                        tags = json.loads(row[15])
+                    except json.JSONDecodeError:
+                        pass
+                
                 story = Story(
                     id=row[0], date=row[1], rank=row[2], title=row[3], url=row[4],
                     points=row[5], author=row[6], comments_count=row[7],
                     hn_discussion_url=row[8], article_summary=row[9],
                     is_relevant=bool(row[11]), relevance_score=row[12],
                     scraped_at=row[13], was_cached=bool(row[14]), 
-                    comments_analysis=comments_analysis
+                    comments_analysis=comments_analysis, tags=tags
                 )
                 stories.append(story)
             
@@ -209,6 +287,124 @@ class DatabaseManager:
         """Get only relevant stories for a specific date"""
         stories = self.get_stories_by_date(target_date)
         return [story for story in stories if story.is_relevant]
+    
+    def get_user_relevant_stories_by_date(self, user_id: str, target_date: str) -> List[Story]:
+        """Get stories relevant to a specific user for a specific date based on their interests"""
+        # First get all stories for the date
+        all_stories = self.get_stories_by_date(target_date)
+        
+        # Get user's interest weights
+        user_interests = self.get_user_interest_weights(user_id)
+        
+        if not user_interests:
+            # If user has no specific interests, fall back to globally relevant stories
+            return [story for story in all_stories if story.is_relevant]
+        
+        # Create user-specific filtering based on interests and story tags
+        relevant_stories = []
+        for story in all_stories:
+            if self._is_story_relevant_to_user(story, user_interests):
+                relevant_stories.append(story)
+        
+        return relevant_stories
+    
+    def _is_story_relevant_to_user(self, story: Story, user_interests: List[UserInterestWeight], debug: bool = False) -> bool:
+        """Determine if a story is relevant to a specific user based on their interests"""
+        if not user_interests:
+            return False  # If user has no interests, don't show any stories
+        
+        # Create a lookup of user interests by keyword (case-insensitive)
+        interest_lookup = {}
+        for interest in user_interests:
+            interest_lookup[interest.keyword.lower()] = interest.weight
+        
+        # Calculate relevance score based on story content and user interests
+        relevance_score = 0.0
+        matched_interests = 0
+        
+        # Analyze story content (title + summary if available)
+        story_text = story.title.lower()
+        if story.article_summary:
+            story_text += " " + story.article_summary.lower()
+        
+        story_tags = [tag.lower() for tag in story.tags] if story.tags else []
+        
+        if debug:
+            print(f"🔍 Checking story: {story.title[:50]}...")
+            print(f"   Story tags: {story_tags}")
+            print(f"   User interests: {list(interest_lookup.keys())}")
+            print(f"   Story text: {story_text[:100]}...")
+        
+        # Score based on direct keyword matches in title and content
+        for keyword, weight in interest_lookup.items():
+            if keyword in story_text:
+                relevance_score += weight
+                matched_interests += 1
+                if debug:
+                    print(f"   ✅ Content match: '{keyword}' (weight: {weight})")
+        
+        # Semantic keyword expansion for better matching
+        keyword_expansions = {
+            'hardware': ['hardware', 'chip', 'processor', 'cpu', 'gpu', 'semiconductor', 'circuit', 'device', 'electronics'],
+            'ai': ['ai', 'artificial intelligence', 'machine learning', 'ml', 'neural', 'llm', 'gpt', 'claude', 'chatgpt', 'model', 'algorithm'],
+            'programming': ['programming', 'code', 'software', 'development', 'developer', 'coding', 'python', 'javascript', 'api'],
+            'startups': ['startup', 'startups', 'founder', 'funding', 'venture', 'vc', 'investment', 'entrepreneur'],
+            'politics': ['politics', 'government', 'election', 'policy', 'trump', 'biden', 'congress'],
+            'robotics': ['robot', 'robotics', 'automation', 'mechanical', 'servo', 'actuator']
+        }
+        
+        # Check expanded keywords
+        for keyword, weight in interest_lookup.items():
+            if keyword in keyword_expansions:
+                for expanded_keyword in keyword_expansions[keyword]:
+                    if expanded_keyword in story_text and expanded_keyword != keyword:  # Avoid double counting
+                        relevance_score += weight * 0.7  # Expanded matches get 70% weight
+                        matched_interests += 1
+                        if debug:
+                            print(f"   ✅ Expanded match: '{expanded_keyword}' -> '{keyword}' (weight: {weight * 0.7})")
+                        break  # Only count first expansion match per keyword
+        
+        # Enhanced tag matching (if tags are available)
+        if story_tags:
+            tag_to_interests_mapping = {
+                'ai': ['artificial intelligence', 'ai', 'machine learning', 'ml'],
+                'programming': ['programming', 'software development', 'code', 'development'],
+                'web': ['web', 'programming', 'software development'],
+                'mobile': ['mobile', 'programming', 'software development'],
+                'startup': ['tech startups', 'startup', 'startups'],
+                'business': ['business', 'economics', 'finance'],
+                'politics': ['politics'],
+                'science': ['science', 'physics', 'biology'],
+                'hardware': ['hardware', 'robotics'],
+                'security': ['security'],
+                'climate': ['climate', 'environment'],
+                'space': ['space'],
+                'general': [],  # General stories don't match specific interests
+                'community': [],
+                'product': [],
+                'educational': ['programming', 'software development']
+            }
+            
+            # Check each story tag against user interests
+            for tag in story_tags:
+                if tag in tag_to_interests_mapping:
+                    possible_interests = tag_to_interests_mapping[tag]
+                    for possible_interest in possible_interests:
+                        if possible_interest in interest_lookup:
+                            weight = interest_lookup[possible_interest]
+                            relevance_score += weight * 0.8  # Tag matches get 80% of keyword weight
+                            matched_interests += 1
+                            if debug:
+                                print(f"   ✅ Tag match: '{tag}' -> '{possible_interest}' (weight: {weight * 0.8})")
+                            break  # Only count first match per tag
+        
+        # Lower threshold for more inclusive filtering since we're working with limited tags
+        is_relevant = relevance_score > 0.3 and matched_interests > 0
+        
+        if debug:
+            print(f"   Final score: {relevance_score:.2f}, matches: {matched_interests}, relevant: {is_relevant}")
+        
+        return is_relevant
     
     def get_available_dates(self) -> List[str]:
         """Get all dates that have scraped data"""
@@ -243,7 +439,60 @@ class DatabaseManager:
                 'cached_stories': row[5] or 0
             }
     
-    def log_interaction(self, story_id: int, interaction_type: str, duration_seconds: Optional[int] = None):
+    def create_user(self, email: str, name: Optional[str] = None) -> str:
+        """Create a new user and return their UUID"""
+        user_id = str(uuid.uuid4())
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO users (user_id, email, name, created_at)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, email, name, datetime.now().isoformat()))
+            conn.commit()
+        return user_id
+    
+    def get_user(self, user_id: str) -> Optional[User]:
+        """Get user by UUID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, user_id, email, name, created_at, last_active_at
+                FROM users WHERE user_id = ?
+            """, (user_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                return User(
+                    id=row[0], user_id=row[1], email=row[2], 
+                    name=row[3], created_at=row[4], last_active_at=row[5]
+                )
+            return None
+    
+    def update_user_activity(self, user_id: str):
+        """Update user's last active timestamp"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users SET last_active_at = ? WHERE user_id = ?
+            """, (datetime.now().isoformat(), user_id))
+            conn.commit()
+    
+    def get_all_users(self) -> List[User]:
+        """Get all users"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, user_id, email, name, created_at, last_active_at
+                FROM users ORDER BY created_at DESC
+            """)
+            
+            return [
+                User(id=row[0], user_id=row[1], email=row[2], 
+                     name=row[3], created_at=row[4], last_active_at=row[5])
+                for row in cursor.fetchall()
+            ]
+
+    def log_interaction(self, user_id: str, story_id: int, interaction_type: str, duration_seconds: Optional[int] = None):
         """Log a user interaction with a story"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -253,32 +502,32 @@ class DatabaseManager:
                 opposite_type = 'thumbs_down' if interaction_type == 'thumbs_up' else 'thumbs_up'
                 cursor.execute("""
                     DELETE FROM user_interactions 
-                    WHERE story_id = ? AND interaction_type = ?
-                """, (story_id, opposite_type))
+                    WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+                """, (user_id, story_id, opposite_type))
                 
                 # Also remove existing rating of the same type to allow toggling
                 cursor.execute("""
                     DELETE FROM user_interactions 
-                    WHERE story_id = ? AND interaction_type = ?
-                """, (story_id, interaction_type))
+                    WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+                """, (user_id, story_id, interaction_type))
             
             cursor.execute("""
                 INSERT INTO user_interactions 
-                (story_id, interaction_type, timestamp, duration_seconds)
-                VALUES (?, ?, ?, ?)
-            """, (story_id, interaction_type, datetime.now().isoformat(), duration_seconds))
+                (user_id, story_id, interaction_type, timestamp, duration_seconds)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, story_id, interaction_type, datetime.now().isoformat(), duration_seconds))
             conn.commit()
     
-    def get_story_interactions(self, story_id: int) -> List[Dict]:
-        """Get all interactions for a specific story"""
+    def get_story_interactions(self, user_id: str, story_id: int) -> List[Dict]:
+        """Get all interactions for a specific story by a specific user"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT interaction_type, timestamp, duration_seconds
                 FROM user_interactions 
-                WHERE story_id = ?
+                WHERE user_id = ? AND story_id = ?
                 ORDER BY timestamp DESC
-            """, (story_id,))
+            """, (user_id, story_id))
             
             return [
                 {
@@ -289,18 +538,18 @@ class DatabaseManager:
                 for row in cursor.fetchall()
             ]
     
-    def remove_interaction(self, story_id: int, interaction_type: str):
+    def remove_interaction(self, user_id: str, story_id: int, interaction_type: str):
         """Remove a specific interaction"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 DELETE FROM user_interactions 
-                WHERE story_id = ? AND interaction_type = ?
-            """, (story_id, interaction_type))
+                WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+            """, (user_id, story_id, interaction_type))
             conn.commit()
     
-    def get_saved_stories(self) -> List[Dict]:
-        """Get all saved stories with their details, ordered by save date"""
+    def get_saved_stories(self, user_id: str) -> List[Dict]:
+        """Get all saved stories for a specific user, ordered by save date"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -308,12 +557,13 @@ class DatabaseManager:
                        s.author, s.comments_count, s.hn_discussion_url, 
                        s.article_summary, s.comments_analysis, s.is_relevant, 
                        s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
-                       COALESCE(s.was_cached, 0) as was_cached
+                       COALESCE(s.was_cached, 0) as was_cached, s.tags, sn.notes
                 FROM stories s
                 JOIN user_interactions ui ON s.id = ui.story_id
-                WHERE ui.interaction_type = 'save'
+                LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
+                WHERE ui.user_id = ? AND ui.interaction_type = 'save'
                 ORDER BY ui.timestamp DESC
-            """)
+            """, (user_id,))
             
             saved_stories = []
             for row in cursor.fetchall():
@@ -321,6 +571,13 @@ class DatabaseManager:
                 if row[10]:  # comments_analysis column
                     try:
                         comments_analysis = json.loads(row[10])
+                    except json.JSONDecodeError:
+                        pass
+                
+                tags = None
+                if row[16]:  # tags column
+                    try:
+                        tags = json.loads(row[16])
                     except json.JSONDecodeError:
                         pass
                 
@@ -340,12 +597,14 @@ class DatabaseManager:
                     'relevance_score': row[12],
                     'scraped_at': row[13],
                     'saved_at': row[14],
-                    'was_cached': bool(row[15])
+                    'was_cached': bool(row[15]),
+                    'tags': tags,
+                    'notes': row[17]  # notes from story_notes table
                 })
             
             return saved_stories
     
-    def save_story_notes(self, story_id: int, notes: str):
+    def save_story_notes(self, user_id: str, story_id: int, notes: str):
         """Save or update personal notes for a story"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -353,25 +612,25 @@ class DatabaseManager:
             
             cursor.execute("""
                 INSERT OR REPLACE INTO story_notes 
-                (story_id, notes, created_at, updated_at)
-                VALUES (?, ?, 
-                    COALESCE((SELECT created_at FROM story_notes WHERE story_id = ?), ?),
+                (user_id, story_id, notes, created_at, updated_at)
+                VALUES (?, ?, ?, 
+                    COALESCE((SELECT created_at FROM story_notes WHERE user_id = ? AND story_id = ?), ?),
                     ?)
-            """, (story_id, notes, story_id, now, now))
+            """, (user_id, story_id, notes, user_id, story_id, now, now))
             conn.commit()
     
-    def get_story_notes(self, story_id: int) -> Optional[str]:
+    def get_story_notes(self, user_id: str, story_id: int) -> Optional[str]:
         """Get personal notes for a story"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT notes FROM story_notes WHERE story_id = ?
-            """, (story_id,))
+                SELECT notes FROM story_notes WHERE user_id = ? AND story_id = ?
+            """, (user_id, story_id))
             
             result = cursor.fetchone()
             return result[0] if result else None
     
-    def get_user_interaction_stats(self, days: int = 30) -> Dict:
+    def get_user_interaction_stats(self, user_id: str, days: int = 30) -> Dict:
         """Get user interaction statistics for the last N days"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -381,9 +640,9 @@ class DatabaseManager:
                     COUNT(*) as count,
                     AVG(duration_seconds) as avg_duration
                 FROM user_interactions 
-                WHERE timestamp > datetime('now', '-{} days')
+                WHERE user_id = ? AND timestamp > datetime('now', '-{} days')
                 GROUP BY interaction_type
-            """.format(days))
+            """.format(days), (user_id,))
             
             results = cursor.fetchall()
             stats = {}
@@ -394,8 +653,60 @@ class DatabaseManager:
                 }
             return stats
     
+    def update_user_interest_weight(self, user_id: str, keyword: str, weight: float, category: str):
+        """Update or insert a user-specific interest weight"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_interest_weights 
+                (user_id, keyword, weight, category, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, keyword, weight, category, datetime.now().isoformat()))
+            conn.commit()
+    
+    def get_user_interest_weights(self, user_id: str) -> List[UserInterestWeight]:
+        """Get all interest weights for a specific user"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, user_id, keyword, weight, category, updated_at
+                FROM user_interest_weights 
+                WHERE user_id = ?
+                ORDER BY weight DESC, keyword
+            """, (user_id,))
+            
+            return [
+                UserInterestWeight(
+                    id=row[0], user_id=row[1], keyword=row[2], weight=row[3], 
+                    category=row[4], updated_at=row[5]
+                )
+                for row in cursor.fetchall()
+            ]
+    
+    def delete_user_interest_weight(self, user_id: str, interest_id: int):
+        """Delete a user-specific interest weight by ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM user_interest_weights WHERE user_id = ? AND id = ?
+            """, (user_id, interest_id))
+            conn.commit()
+            return cursor.rowcount > 0  # Returns True if a row was deleted
+    
+    def copy_default_interests_to_user(self, user_id: str):
+        """Copy default interest weights to a new user"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO user_interest_weights (user_id, keyword, weight, category, updated_at)
+                SELECT ?, keyword, weight, category, ?
+                FROM interest_weights
+            """, (user_id, datetime.now().isoformat()))
+            conn.commit()
+
+    # Keep original methods for backward compatibility and default templates
     def update_interest_weight(self, keyword: str, weight: float, category: str):
-        """Update or insert an interest weight"""
+        """Update or insert a global interest weight (for default templates)"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -406,7 +717,7 @@ class DatabaseManager:
             conn.commit()
     
     def get_interest_weights(self) -> List[InterestWeight]:
-        """Get all interest weights"""
+        """Get all global interest weights"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -424,7 +735,7 @@ class DatabaseManager:
             ]
     
     def delete_interest_weight(self, interest_id: int):
-        """Delete an interest weight by ID"""
+        """Delete a global interest weight by ID"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -433,6 +744,45 @@ class DatabaseManager:
             conn.commit()
             return cursor.rowcount > 0  # Returns True if a row was deleted
     
+    def _migrate_to_multi_user(self, cursor):
+        """Migrate existing single-user database to multi-user schema"""
+        try:
+            # Check if we have existing user_interactions without user_id
+            cursor.execute("PRAGMA table_info(user_interactions)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'user_id' not in columns and 'story_id' in columns:
+                print("🔄 Migrating user_interactions table to multi-user schema...")
+                # Backup existing interactions
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_interactions_backup AS 
+                    SELECT * FROM user_interactions
+                """)
+                
+                # Drop old table
+                cursor.execute("DROP TABLE user_interactions")
+                print("✅ user_interactions table migration complete")
+            
+            # Check story_notes table
+            try:
+                cursor.execute("PRAGMA table_info(story_notes)")
+                story_notes_columns = [row[1] for row in cursor.fetchall()]
+                
+                if 'user_id' not in story_notes_columns and 'story_id' in story_notes_columns:
+                    print("🔄 Migrating story_notes table...")
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS story_notes_backup AS 
+                        SELECT * FROM story_notes
+                    """)
+                    cursor.execute("DROP TABLE story_notes")
+                    print("✅ story_notes table migration complete")
+            except:
+                # story_notes table might not exist yet
+                pass
+                
+        except Exception as e:
+            print(f"⚠️ Migration warning: {e}")
+
     def close(self):
         """Close database connection (SQLite auto-closes, but good practice)"""
         pass
