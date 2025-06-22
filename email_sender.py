@@ -12,6 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from typing import Dict, Optional
 from dotenv import load_dotenv
+import resend
 
 class EmailNotifier:
     def __init__(self):
@@ -33,7 +34,7 @@ class EmailNotifier:
                 "and RECIPIENT_EMAIL in your .env file"
             )
     
-    def create_daily_digest_email(self, digest_data: Dict) -> MIMEMultipart:
+    def create_daily_digest_email(self, digest_data: Dict, user_email: Optional[str] = None, user_id: Optional[str] = None) -> MIMEMultipart:
         """Create HTML email for daily digest with dashboard link"""
         
         scrape_date = digest_data.get('scrape_date', datetime.now().isoformat())
@@ -53,10 +54,14 @@ class EmailNotifier:
         message = MIMEMultipart("alternative")
         message["Subject"] = f"🤖 Your Daily HN Digest - {date_str} ({relevant_stories} relevant stories)"
         message["From"] = self.email_user
-        message["To"] = self.recipient_email
+        message["To"] = user_email or self.recipient_email
         
         # Dashboard URL
-        dashboard_url = f"{self.dashboard_base_url}/dashboard/{date_str}"
+        # Use user_id for personalized dashboard URL if available
+        if user_id:
+            dashboard_url = f"{self.dashboard_base_url}/dashboard/{user_id}/{date_str}"
+        else:
+            dashboard_url = f"{self.dashboard_base_url}/dashboard/{date_str}"
         
         # Create HTML content
         html_content = self._generate_html_email(
@@ -104,18 +109,6 @@ class EmailNotifier:
             </div>
             """
         
-        # Cost savings info
-        savings_info = ""
-        if cost_report:
-            savings_pct = cost_report.get('savings_percentage', 0)
-            money_saved = cost_report.get('estimated_money_saved', 0)
-            savings_info = f"""
-            <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 12px; border-radius: 6px; margin: 16px 0;">
-                <p style="margin: 0; color: #047857; font-size: 14px;">
-                    💰 <strong>Cost Optimization:</strong> Saved {savings_pct}% API costs (${money_saved:.3f} saved today)
-                </p>
-            </div>
-            """
         
         html = f"""
         <!DOCTYPE html>
@@ -147,7 +140,6 @@ class EmailNotifier:
                         </p>
                     </div>
                     
-                    {savings_info}
                     
                     <!-- Main CTA Button -->
                     <div style="text-align: center; margin: 24px 0;">
@@ -201,11 +193,6 @@ class EmailNotifier:
             f"📊 Summary: {relevant_stories} relevant stories out of {total_stories} total",
         ]
         
-        # Add cost savings info
-        if cost_report:
-            savings_pct = cost_report.get('savings_percentage', 0)
-            money_saved = cost_report.get('estimated_money_saved', 0)
-            text_parts.append(f"💰 Cost Optimization: {savings_pct}% savings (${money_saved:.3f} saved)")
         
         text_parts.extend([
             "",
@@ -303,9 +290,9 @@ class EmailNotifier:
         for user_data in users_data:
             user = user_data.get('user')
             digest_data = user_data.get('digest_data')
-            user_email = user_data.get('user_email', user.email if user else None)
-            user_id = user.user_id if user else None
-            user_name = user.name if user else "User"
+            user_email = user_data.get('user_email', user.get('email') if user else None)
+            user_id = user.get('user_id') if user else None
+            user_name = user.get('name', user.get('email', 'User')) if user else "User"
             
             if not user_email:
                 print(f"⚠️ No email for user {user_name} (ID: {user_id})")
@@ -402,10 +389,134 @@ class EmailNotifier:
             print(f"❌ Error sending test email: {str(e)}")
             return False
 
+class ResendEmailNotifier(EmailNotifier):
+    """Email notifier using Resend API instead of SMTP"""
+    
+    def __init__(self):
+        """Initialize Resend email notifier"""
+        load_dotenv()
+        
+        # Resend configuration
+        self.resend_api_key = os.getenv('RESEND_API_KEY')
+        if not self.resend_api_key:
+            raise ValueError("Missing RESEND_API_KEY in .env file")
+        
+        # Configure Resend
+        resend.api_key = self.resend_api_key
+        
+        # Email configuration
+        self.email_user = os.getenv('EMAIL_USER', 'digest@yourdomain.com')
+        self.recipient_email = os.getenv('RECIPIENT_EMAIL')
+        self.dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', 'http://localhost:8000')
+        
+        # Validate configuration
+        if not self.recipient_email:
+            raise ValueError("Missing RECIPIENT_EMAIL in your .env file")
+    
+    def send_email(self, message: MIMEMultipart, recipient_email: Optional[str] = None) -> bool:
+        """Send email using Resend API"""
+        try:
+            recipient = recipient_email or self.recipient_email
+            if not recipient:
+                raise ValueError("No recipient email specified")
+            
+            # Extract subject from message
+            subject = message["Subject"]
+            
+            # Get HTML and text parts
+            html_content = None
+            text_content = None
+            
+            for part in message.walk():
+                if part.get_content_type() == "text/html":
+                    html_content = part.get_payload(decode=True).decode()
+                elif part.get_content_type() == "text/plain":
+                    text_content = part.get_payload(decode=True).decode()
+            
+            # Send via Resend
+            response = resend.Emails.send({
+                "from": self.email_user,
+                "to": recipient,
+                "subject": subject,
+                "html": html_content,
+                "text": text_content
+            })
+            
+            print(f"✅ Email sent successfully to {recipient} via Resend (ID: {response.get('id', 'unknown')})")
+            return True
+            
+        except Exception as e:
+            error_msg = str(e) if str(e) else "Unknown error"
+            print(f"❌ Error sending email via Resend: {error_msg}")
+            # Try to extract more error details if available
+            if hasattr(e, '__dict__'):
+                print(f"   Error details: {e.__dict__}")
+            return False
+    
+    def send_test_email(self) -> bool:
+        """Send a test email via Resend to verify configuration"""
+        try:
+            # Send test email directly via Resend
+            response = resend.Emails.send({
+                "from": self.email_user,
+                "to": self.recipient_email,
+                "subject": "🧪 HN Scraper Email Test (Resend)",
+                "html": f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2 style="color: #ff6600;">🧪 Email Configuration Test (Resend)</h2>
+                    <p>Your HN Scraper email system is working correctly with Resend!</p>
+                    <p><strong>Configuration:</strong></p>
+                    <ul>
+                        <li>Email Provider: Resend API</li>
+                        <li>From: {self.email_user}</li>
+                        <li>To: {self.recipient_email}</li>
+                        <li>Dashboard URL: {self.dashboard_base_url}</li>
+                    </ul>
+                    <p>You're all set to receive daily digest emails! 🎉</p>
+                </body>
+                </html>
+                """,
+                "text": f"""
+                🧪 Email Configuration Test (Resend)
+                
+                Your HN Scraper email system is working correctly with Resend!
+                
+                Configuration:
+                - Email Provider: Resend API
+                - From: {self.email_user}
+                - To: {self.recipient_email}
+                - Dashboard URL: {self.dashboard_base_url}
+                
+                You're all set to receive daily digest emails! 🎉
+                """
+            })
+            
+            print(f"✅ Test email sent successfully! (ID: {response.get('id', 'unknown')})")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error sending test email: {str(e)}")
+            return False
+
+
+def get_email_notifier():
+    """Factory function to get the appropriate email notifier based on configuration"""
+    load_dotenv()
+    email_provider = os.getenv('EMAIL_PROVIDER', 'smtp').lower()
+    
+    if email_provider == 'resend':
+        print("📧 Using Resend for email delivery")
+        return ResendEmailNotifier()
+    else:
+        print("📧 Using SMTP for email delivery")
+        return EmailNotifier()
+
+
 def test_email_system():
     """Test the email notification system"""
     try:
-        notifier = EmailNotifier()
+        notifier = get_email_notifier()
         print("🧪 Testing email system...")
         
         # Send test email
@@ -419,12 +530,22 @@ def test_email_system():
         print(f"❌ Configuration error: {e}")
         print("\n📝 To set up email notifications:")
         print("1. Add these variables to your .env file:")
+        print("\n   For Resend (recommended):")
+        print("   EMAIL_PROVIDER=resend")
+        print("   RESEND_API_KEY=your_resend_api_key")
+        print("   EMAIL_USER=digest@yourdomain.com")
+        print("   RECIPIENT_EMAIL=recipient@example.com")
+        print("   DASHBOARD_BASE_URL=http://localhost:8000")
+        print("\n   For SMTP/Gmail:")
+        print("   EMAIL_PROVIDER=smtp  # or leave blank")
         print("   EMAIL_USER=your_email@gmail.com")
         print("   EMAIL_APP_PASSWORD=your_gmail_app_password")
         print("   RECIPIENT_EMAIL=recipient@example.com")
         print("   DASHBOARD_BASE_URL=http://localhost:8000")
         print("\n2. For Gmail, create an app password:")
         print("   https://support.google.com/accounts/answer/185833")
+        print("\n3. For Resend, get your API key:")
+        print("   https://resend.com/api-keys")
 
 if __name__ == "__main__":
     test_email_system()
