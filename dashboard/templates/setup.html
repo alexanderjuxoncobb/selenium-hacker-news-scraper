@@ -44,7 +44,7 @@
                 </div>
                 {% endif %}
 
-                <form method="POST" action="/setup" class="space-y-6">
+                <form method="POST" action="/setup" class="space-y-6" id="setupForm">
                     <!-- Email -->
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
@@ -80,102 +80,144 @@
                     <!-- Interest Selection -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-4">
-                            Select Your Interests
+                            Select Your Topics of Interest
                         </label>
                         <p class="text-sm text-gray-600 mb-4">
-                            Choose topics you're interested in. We'll use AI to find the most relevant stories for you.
+                            Check the topics you want to see stories about in your personalized digest.
                         </p>
                         
-                        <div class="space-y-4">
-                            <!-- High Priority Interests -->
+                        <div class="space-y-6">
+                            {% for section_name, topics in topic_sections.items() %}
                             <div>
-                                <h4 class="font-medium text-gray-800 mb-2">🔥 High Priority Topics</h4>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {% for keyword in default_interests.high_priority %}
-                                    <label class="flex items-center space-x-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="high_interests" 
-                                            value="{{ keyword }}"
-                                            class="rounded border-gray-300 text-hn-orange focus:ring-hn-orange"
-                                        >
-                                        <span class="text-sm text-gray-700">{{ keyword }}</span>
-                                    </label>
+                                <h4 class="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">{{ section_name }}</h4>
+                                <div class="space-y-2">
+                                    {% for keyword in topics %}
+                                    <div class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                        <label class="flex items-center cursor-pointer flex-1">
+                                            <input 
+                                                type="checkbox" 
+                                                name="topic_{{ keyword }}" 
+                                                value="interested" 
+                                                class="h-4 w-4 text-hn-orange focus:ring-hn-orange border-gray-300 rounded"
+                                            >
+                                            <span class="ml-3 text-sm font-medium text-gray-700">{{ keyword }}</span>
+                                        </label>
+                                    </div>
                                     {% endfor %}
                                 </div>
                             </div>
-
-                            <!-- Medium Priority Interests -->
-                            <div>
-                                <h4 class="font-medium text-gray-800 mb-2">📝 Medium Priority Topics</h4>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {% for keyword in default_interests.medium_priority %}
-                                    <label class="flex items-center space-x-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="medium_interests" 
-                                            value="{{ keyword }}"
-                                            class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-                                        >
-                                        <span class="text-sm text-gray-700">{{ keyword }}</span>
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <!-- Low Priority Interests -->
-                            <div>
-                                <h4 class="font-medium text-gray-800 mb-2">🎵 Low Priority Topics</h4>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {% for keyword in default_interests.low_priority %}
-                                    <label class="flex items-center space-x-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="low_interests" 
-                                            value="{{ keyword }}"
-                                            class="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
-                                        >
-                                        <span class="text-sm text-gray-700">{{ keyword }}</span>
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
+                            {% endfor %}
                         </div>
 
                         <!-- Custom Interests -->
-                        <div class="mt-4">
-                            <label for="custom_interests" class="block text-sm font-medium text-gray-700 mb-2">
-                                Custom Interests
-                            </label>
-                            <input 
-                                type="text" 
-                                id="custom_interests" 
-                                name="custom_interests" 
-                                value=""
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
-                                placeholder="machine learning, blockchain, startups (comma-separated)"
-                            >
-                            <p class="text-sm text-gray-500 mt-1">Add any additional interests, separated by commas</p>
+                        <div class="mt-6">
+                            <h4 class="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">Custom Interests</h4>
+                            <p class="text-sm text-gray-600 mb-4">Add any topics not listed above</p>
+                            
+                            <!-- Add New Interest Form -->
+                            <div class="flex gap-2 mb-4 max-w-2xl">
+                                <input 
+                                    type="text" 
+                                    id="new_interest_input" 
+                                    placeholder="Enter a topic (e.g., blockchain, design, psychology)"
+                                    class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
+                                >
+                                <button 
+                                    type="button" 
+                                    onclick="addCustomInterest()"
+                                    class="px-4 py-2 bg-hn-orange text-white text-sm rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-hn-orange"
+                                >
+                                    Add Topic
+                                </button>
+                            </div>
+                            
+                            <!-- Added Custom Interests List -->
+                            <div id="custom_interests_list" class="space-y-2">
+                                <!-- Custom interests will be added here dynamically -->
+                            </div>
+                            
+                            <!-- Hidden inputs for form submission -->
+                            <div id="custom_interests_hidden">
+                                <!-- Hidden inputs will be added here -->
+                            </div>
                         </div>
+                        
+                        <script>
+                        let customInterestCounter = 0;
+                        
+                        function addCustomInterest() {
+                            const input = document.getElementById('new_interest_input');
+                            const interestText = input.value.trim();
+                            
+                            if (!interestText) {
+                                alert('Please enter a topic');
+                                return;
+                            }
+                            
+                            // Check if already exists
+                            const existingInterests = Array.from(document.querySelectorAll('.custom-interest-item')).map(el => el.dataset.interest);
+                            if (existingInterests.includes(interestText.toLowerCase())) {
+                                alert('This topic has already been added');
+                                return;
+                            }
+                            
+                            // Create visual item
+                            const listDiv = document.getElementById('custom_interests_list');
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg custom-interest-item hover:bg-gray-100 transition-colors';
+                            itemDiv.dataset.interest = interestText.toLowerCase();
+                            
+                            itemDiv.innerHTML = `
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span class="text-sm font-medium text-gray-700">${interestText}</span>
+                                </div>
+                                <button type="button" onclick="removeCustomInterest(this)" class="text-red-500 hover:text-red-700 text-sm">
+                                    Remove
+                                </button>
+                            `;
+                            listDiv.appendChild(itemDiv);
+                            
+                            // Create hidden input for form submission (just the keyword, no priority)
+                            const hiddenDiv = document.getElementById('custom_interests_hidden');
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = `custom_interest_${customInterestCounter}`;
+                            hiddenInput.value = interestText;
+                            hiddenInput.id = `hidden_${customInterestCounter}`;
+                            hiddenDiv.appendChild(hiddenInput);
+                            
+                            itemDiv.dataset.hiddenId = `hidden_${customInterestCounter}`;
+                            customInterestCounter++;
+                            
+                            // Clear input
+                            input.value = '';
+                        }
+                        
+                        function removeCustomInterest(button) {
+                            const itemDiv = button.closest('.custom-interest-item');
+                            const hiddenId = itemDiv.dataset.hiddenId;
+                            
+                            // Remove visual item
+                            itemDiv.remove();
+                            
+                            // Remove hidden input
+                            const hiddenInput = document.getElementById(hiddenId);
+                            if (hiddenInput) {
+                                hiddenInput.remove();
+                            }
+                        }
+                        
+                        // Allow Enter key to add interest
+                        document.getElementById('new_interest_input').addEventListener('keypress', function(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addCustomInterest();
+                            }
+                        });
+                        </script>
                     </div>
 
-                    <!-- Email Schedule -->
-                    <div>
-                        <label for="email_time" class="block text-sm font-medium text-gray-700 mb-2">
-                            Daily Email Time
-                        </label>
-                        <select 
-                            name="email_time" 
-                            id="email_time"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
-                        >
-                            <option value="08:30" selected>8:30 AM</option>
-                            <option value="09:00">9:00 AM</option>
-                            <option value="09:30">9:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                        </select>
-                        <p class="text-sm text-gray-500 mt-1">When would you like to receive your daily digest?</p>
-                    </div>
 
                     <!-- Submit -->
                     <div class="pt-4">
@@ -230,5 +272,117 @@
             <p>🔒 Your email and preferences are stored securely. We never share your data or send spam.</p>
         </div>
     </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-robot text-hn-orange text-5xl animate-pulse"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Setting Up Your Personal Digest</h3>
+                    <p class="text-gray-600 mb-6">We're analyzing today's Hacker News stories to find the ones that match your interests...</p>
+                    
+                    <!-- Progress Bar -->
+                    <div class="relative pt-1 mb-4">
+                        <div class="overflow-hidden h-4 text-xs flex rounded bg-orange-100">
+                            <div id="progressBar" class="progress-bar-striped progress-bar-animated shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-hn-orange transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Messages -->
+                    <div id="statusMessage" class="text-sm text-gray-600">
+                        <span id="statusText">Creating your account...</span>
+                    </div>
+                    
+                    <!-- Fun facts while waiting -->
+                    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <p class="text-xs text-blue-700">
+                            <i class="fas fa-lightbulb mr-1"></i>
+                            <span id="funFact">Did you know? Our AI analyzes article content, comments, and discussion patterns to find the most relevant stories for you!</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes progress-bar-stripes {
+            from { background-position: 40px 0; }
+            to { background-position: 0 0; }
+        }
+        
+        .progress-bar-striped {
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
+            background-size: 40px 40px;
+        }
+        
+        .progress-bar-animated {
+            animation: progress-bar-stripes 1s linear infinite;
+        }
+    </style>
+
+    <script>
+        // Form submission handler
+        document.getElementById('setupForm').addEventListener('submit', function(e) {
+            // Show loading overlay
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            // Disable submit button to prevent double submission
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            
+            // Start progress animation
+            let progress = 0;
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('statusText');
+            const funFact = document.getElementById('funFact');
+            
+            // Status messages to show during processing
+            const statusMessages = [
+                { progress: 10, text: "Creating your account..." },
+                { progress: 25, text: "Saving your interests..." },
+                { progress: 40, text: "Connecting to AI pipeline..." },
+                { progress: 60, text: "Analyzing today's stories..." },
+                { progress: 80, text: "Finding relevant content..." },
+                { progress: 95, text: "Almost done..." }
+            ];
+            
+            // Fun facts to rotate through
+            const funFacts = [
+                "Our AI uses advanced embeddings to understand story context beyond just keywords!",
+                "We analyze both article content and comment discussions to determine relevance.",
+                "The system learns from your interactions to improve recommendations over time.",
+                "We typically process 30-100 stories per day from Hacker News.",
+                "Your personalized digest saves you hours of browsing time!"
+            ];
+            
+            let messageIndex = 0;
+            let factIndex = 0;
+            
+            // Update progress bar
+            const progressInterval = setInterval(() => {
+                if (messageIndex < statusMessages.length && progress >= statusMessages[messageIndex].progress) {
+                    statusText.textContent = statusMessages[messageIndex].text;
+                    messageIndex++;
+                }
+                
+                if (progress < 95) {
+                    progress += Math.random() * 5;
+                    progressBar.style.width = Math.min(progress, 95) + '%';
+                }
+            }, 300);
+            
+            // Rotate fun facts
+            const factInterval = setInterval(() => {
+                factIndex = (factIndex + 1) % funFacts.length;
+                funFact.textContent = funFacts[factIndex];
+            }, 3000);
+            
+            // Note: The actual form submission continues, these intervals will be cleared when page redirects
+        });
+    </script>
 </body>
 </html>

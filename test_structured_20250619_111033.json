@@ -1,0 +1,208 @@
+{
+  "scrape_date": "2025-06-19T11:10:33.124836",
+  "total_stories": 3,
+  "relevant_stories": 3,
+  "stories": [
+    {
+      "rank": 1,
+      "story_id": "44314423",
+      "title": "Andrej Karpathy: Software in the era of AI [video]",
+      "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+      "points": 493,
+      "author": "sandslash",
+      "time_posted": "9 hours ago",
+      "comments_count": 154,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44314423",
+      "scraped_at": "2025-06-19T11:10:11.617945",
+      "relevance_score": 0.6254932284355164,
+      "relevance_reasoning": "Best match: 'AI' (high_priority) - similarity: 0.625",
+      "ai_refined": false,
+      "article_summary": "Article content too short to summarize effectively.",
+      "comments_analysis": {
+        "total_comments_analyzed": 5,
+        "main_themes": [
+          "Claude 4",
+          "Shift towards AI tools for coding",
+          "Concerns about corporate control over AI development"
+        ],
+        "agreement_points": [],
+        "disagreement_points": [
+          "Debate on the effectiveness of AI in coding tasks",
+          "Concerns about reliance on large corporations for coding solutions"
+        ],
+        "sentiment_summary": "The discussion reflects a skepticism towards the current capabilities of AI in coding, highlighting the brittleness of AI systems and the fear of increased dependency on large corporations for coding solutions. Users express frustration with AI tools that fail to simplify their work, indicating a gap between expectations and reality.",
+        "top_comment_summary": "The commenter highlights the limitations of AI systems like Claude 4 in practical coding tasks, noting that despite prompting for accuracy, it still produced inefficient code. They emphasize the gap between the idealized capabilities of AI and the complexities of real-world software engineering, suggesting that improvements may come with better testing and simulation methods.",
+        "detailed_technical_analysis": {
+          "specific_numbers": [],
+          "tools_mentioned": [
+            "Claude 4"
+          ],
+          "performance_data": [],
+          "hardware_specs": []
+        },
+        "detailed_cost_analysis": {
+          "price_comparisons": [],
+          "resource_requirements": [],
+          "efficiency_gains": []
+        },
+        "detailed_implementation": {
+          "setup_instructions": [],
+          "configuration_details": [],
+          "compatibility_issues": []
+        },
+        "detailed_consensus": {
+          "strong_agreements": [],
+          "major_disagreements": [
+            "Debate on the effectiveness of AI in coding tasks",
+            "Concerns about reliance on large corporations for coding solutions"
+          ],
+          "expert_opinions": [
+            "AI tools may not significantly ease the workload of developers",
+            "Current AI systems are perceived as brittle and unreliable"
+          ]
+        },
+        "detailed_business_intelligence": {
+          "market_trends": [
+            "Shift towards AI tools for coding",
+            "Concerns about corporate control over AI development"
+          ],
+          "company_strategies": [],
+          "competitive_landscape": []
+        },
+        "detailed_success_stories": {
+          "working_setups": [],
+          "failed_attempts": [
+            "AI-generated code often incorrect",
+            "Difficulty in using AI for simple coding tasks"
+          ],
+          "performance_reports": []
+        },
+        "detailed_recommendations": {
+          "actionable_advice": [],
+          "what_to_avoid": [
+            "Avoid over-reliance on AI for coding",
+            "Be cautious of AI-generated solutions"
+          ],
+          "optimization_tips": []
+        },
+        "comment_stats": {
+          "total_comments": 5,
+          "avg_comment_length": 401,
+          "comments_with_scores": 0
+        },
+        "top_comments": [
+          {
+            "rank": 1,
+            "comment_id": "44316934",
+            "author": "mentalgear",
+            "time_posted": "34 minutes ago",
+            "score": null,
+            "text": "Meanwhile, I asked this morning Claude 4 to write a simple EXIF normalizer. After two rounds of prompting it to double-check its code, I still had to point out that it makes no sense to load the entire image for re-orientating if the EXIF orientation is fine in the first place.\nVibe vs reality, and anyone actually working in the space daily can attest how brittle these systems are.\nMaybe this changes in SWE with more automated tests in verifiable simulators, but the real world is far to complex to simulate in its vastness.",
+            "length": 94
+          },
+          {
+            "rank": 2,
+            "comment_id": "44317104",
+            "author": "diggan",
+            "time_posted": "1 minute ago",
+            "score": null,
+            "text": "> Meanwhile\nWhat do you mean \"meanwhile\", that's exactly (among other things) the kind of stuff he's talking about? The various frictions and how you need to approach it",
+            "length": 29
+          },
+          {
+            "rank": 3,
+            "comment_id": "44316568",
+            "author": "fergie",
+            "time_posted": "1 hour ago",
+            "score": null,
+            "text": "There were some cool ideas- I particularly liked \"psychology of AI\"\nOverall though I really feel like he is selling the idea that we are going to have to pay large corporations to be able to write code. Which is... terrifying.\nAlso, as a lazy developer who is always trying to make AI do my job for me, it still kind of sucks, and its not clear that it will make my life easier any time soon.",
+            "length": 77
+          },
+          {
+            "rank": 4,
+            "comment_id": "44316942",
+            "author": "teekert",
+            "time_posted": "33 minutes ago",
+            "score": null,
+            "text": "He says that now we are in the mainframe phase. We will hit the personal computing phase hopefully soon. He says llama (and DeepSeek?) are like Linux in a way, OpenAI and Claude are like Windows and MacOS.\nSo, No, he’s actually saying it may be everywhere for cheap soon.\nI find the talk to be refreshingly intellectually honest and unbiased. Like the opposite of a cringey LinkedIn post on AI.",
+            "length": 71
+          },
+          {
+            "rank": 5,
+            "comment_id": "44316675",
+            "author": "guappa",
+            "time_posted": "1 hour ago",
+            "score": null,
+            "text": "I think it used to be like that before the GNU people made gcc, completely destroying the market of compilers.\n> Also, as a lazy developer who is always trying to make AI do my job for me, it still kind of sucks, and its not clear that it will make my life easier any time soon.\nEvery time I have to write a simple self contained couple of functions I try… and it gets it completely wrong.\nIt's easier to just write it myself rather than to iterate 50 times and hope it will work, considering iterations are also very slow.",
+            "length": 102
+          }
+        ]
+      },
+      "is_relevant": true
+    },
+    {
+      "rank": 2,
+      "story_id": "44314977",
+      "title": "The Zed Debugger Is Here",
+      "url": "https://zed.dev/blog/debugger",
+      "points": 271,
+      "author": "SupremumLimit",
+      "time_posted": "7 hours ago",
+      "comments_count": 71,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44314977",
+      "scraped_at": "2025-06-19T11:10:11.688741",
+      "relevance_score": 0.28988322615623474,
+      "relevance_reasoning": "Best match: 'software development' (high_priority) - similarity: 0.290",
+      "ai_refined": false,
+      "is_relevant": false
+    },
+    {
+      "rank": 3,
+      "story_id": "44317012",
+      "title": "Show HN: Claude Code Usage Monitor – real-time tracker to dodge usage cut-offs",
+      "url": "https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor",
+      "points": 6,
+      "author": "Maciej-roboblog",
+      "time_posted": "22 minutes ago",
+      "comments_count": 2,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44317012",
+      "scraped_at": "2025-06-19T11:10:11.759801",
+      "relevance_score": 0.3048814535140991,
+      "relevance_reasoning": "Best match: 'programming' (high_priority) - similarity: 0.305",
+      "ai_refined": true,
+      "article_summary": "The Claude Code Usage Monitor is a real-time terminal tool designed for tracking Claude AI token usage, offering features such as updates every 3 seconds, visual progress bars, and smart predictions for token depletion based on current burn rates. It supports multiple plans—Pro (~7,000 tokens), Max5 (~35,000), and Max20 (~140,000)—and includes an auto-detection mode that switches to a custom limit when the Pro threshold is exceeded. Users can customize reset times and time zones, with default reset times set for every 5 hours after the first message in a session. The tool can be installed using Python 3.6+ and npm, with a simple command like `./ccusage_monitor.py --plan pro` for basic usage. As stated in the article, \"Start Early: Begin monitoring when you start a new session\" is a key actionable insight for effective management of token usage.",
+      "comments_analysis": {
+        "total_comments_analyzed": 2,
+        "main_themes": [
+          "Limited discussion"
+        ],
+        "agreement_points": [
+          "Only 2 comments available"
+        ],
+        "disagreement_points": [],
+        "sentiment_summary": "Brief discussion with 2 comments",
+        "top_comments": [
+          {
+            "rank": 1,
+            "comment_id": "44317109",
+            "author": "pbowyer",
+            "time_posted": "0 minutes ago",
+            "score": null,
+            "text": "With uv, is there a way to install Python and Node tools like this in a self-contained way so they appear to the system as a single executable?\nI guess I don't want to duplicate Python/Node for every tool, but I also don't want it to be fragile. And this wants a Node CLI tool installed globally, which I've found breaks easily with changing versions.",
+            "length": 65
+          },
+          {
+            "rank": 2,
+            "comment_id": "44317112",
+            "author": "Maciej-roboblog",
+            "time_posted": "0 minutes ago",
+            "score": null,
+            "text": "Today, I will commit a new Auto Mode (with DuckDB) that uses machine learning to understand your actual token limits, not hardcoded solution.",
+            "length": 23
+          }
+        ]
+      },
+      "is_relevant": true
+    }
+  ]
+}

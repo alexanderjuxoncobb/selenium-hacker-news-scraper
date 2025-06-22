@@ -104,18 +104,15 @@ class CostOptimizedAI:
         print("🔄 Computing interest embeddings...")
         
         self.interest_embeddings = {}
-        self.interest_weights = {
-            "high_priority": 1.0,
-            "medium_priority": 0.6,
-            "low_priority": 0.3
-        }
+        # Single weight for all interests - no priority system
+        self.single_weight = 1.0
         
         for category, keywords in self.user_interests.items():
             embeddings = self.embedding_model.encode(keywords)
             self.interest_embeddings[category] = {
                 'embeddings': embeddings,
                 'keywords': keywords,
-                'weight': self.interest_weights[category]
+                'weight': self.single_weight  # Always 1.0
             }
         
         print("✅ Interest embeddings computed")
@@ -198,7 +195,7 @@ class CostOptimizedAI:
                 best_category = category
         
         # Threshold for relevance (tunable)
-        relevance_threshold = 0.25  # More permissive threshold for technical content
+        relevance_threshold = 0.20  # Lowered threshold to catch technical content like TPUs that relate to hardware
         is_relevant = max_similarity > relevance_threshold
         
         reasoning = f"Best match: '{best_match}' ({best_category}) - similarity: {max_similarity:.3f}"
@@ -705,11 +702,7 @@ class CostOptimizedAI:
         # Handle both dict format and database object format
         if isinstance(user_interests, dict) and user_interests and isinstance(list(user_interests.values())[0], list):
             # Dictionary format from form data
-            weight_mapping = {
-                "high_priority": 1.0,
-                "medium_priority": 0.6,
-                "low_priority": 0.3
-            }
+            # Always use weight 1.0 regardless of category
             
             for category, keywords in user_interests.items():
                 if keywords:  # Only process non-empty categories
@@ -717,7 +710,7 @@ class CostOptimizedAI:
                     interest_embeddings[category] = {
                         'embeddings': embeddings,
                         'keywords': keywords,
-                        'weight': weight_mapping.get(category, 0.5)
+                        'weight': 1.0  # Single weight for all interests
                     }
         else:
             # Database UserInterestWeight objects format
@@ -733,11 +726,11 @@ class CostOptimizedAI:
             
             for category, data in categories.items():
                 embeddings = self.embedding_model.encode(data['keywords'])
-                avg_weight = sum(data['weights']) / len(data['weights'])
+                # Always use weight 1.0, ignore stored weights from database
                 interest_embeddings[category] = {
                     'embeddings': embeddings,
                     'keywords': data['keywords'],
-                    'weight': avg_weight
+                    'weight': 1.0  # Single weight for all interests
                 }
         
         return interest_embeddings

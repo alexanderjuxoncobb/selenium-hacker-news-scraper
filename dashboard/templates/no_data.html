@@ -18,7 +18,7 @@
             <p class="text-sm text-gray-500 mb-3">Available dates:</p>
             <div class="flex flex-wrap justify-center gap-2">
                 {% for date in available_dates[:10] %}
-                <a href="/dashboard/{{ date }}" 
+                <a href="/dashboard/{{ user.user_id }}/{{ date }}" 
                    class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-hn-orange text-white hover:bg-orange-600">
                     {{ date }}
                 </a>
@@ -50,11 +50,11 @@
             </div>
             
             <div class="flex justify-center space-x-4">
-                <a href="/" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <a href="/dashboard/{{ user.user_id }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <i class="fas fa-refresh mr-2"></i>
                     Refresh
                 </a>
-                <a href="/interests" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+                <a href="/interests/{{ user.user_id }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
                     <i class="fas fa-cog mr-2"></i>
                     Configure Interests
                 </a>

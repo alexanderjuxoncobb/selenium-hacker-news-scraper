@@ -68,6 +68,27 @@
                         </div>
                     </div>
 
+                    {% if processing_stats %}
+                    <!-- Processing Results -->
+                    <div class="bg-green-50 rounded-lg p-6 mb-6">
+                        <h3 class="font-medium text-green-900 mb-3">🎉 Great news! We've already found content for you:</h3>
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <div class="text-3xl font-bold text-green-700">{{ processing_stats.relevant_stories }}</div>
+                                <div class="text-sm text-green-600">Relevant Stories Found</div>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-bold text-gray-700">{{ processing_stats.total_stories }}</div>
+                                <div class="text-sm text-gray-600">Total Stories Analyzed</div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-700 mt-3">
+                            We've analyzed today's Hacker News stories and found {{ processing_stats.relevant_stories }} 
+                            that match your interests. You can start reading immediately!
+                        </p>
+                    </div>
+                    {% endif %}
+
                     <!-- Important Links -->
                     <div class="space-y-4">
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">

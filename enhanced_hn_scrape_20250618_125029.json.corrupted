@@ -1,0 +1,17 @@
+{
+  "scrape_date": "2025-06-18T12:50:29.186756",
+  "total_stories": 30,
+  "relevant_stories": 5,
+  "stories": [
+    {
+      "rank": 1,
+      "story_id": "44307290",
+      "title": "MiniMax-M1 open-weight, large-scale hybrid-attention reasoning model",
+      "url": "https://github.com/MiniMax-AI/MiniMax-M1",
+      "points": 161,
+      "author": "danboarder",
+      "time_posted": "4 hours ago",
+      "comments_count": 29,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44307290",
+      "scraped_at": "2025-06-18T12:49:10.461038",
+      "relevance_score": 

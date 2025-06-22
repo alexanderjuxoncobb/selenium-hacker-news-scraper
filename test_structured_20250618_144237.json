@@ -1,0 +1,263 @@
+{
+  "scrape_date": "2025-06-18T14:42:37.273229",
+  "total_stories": 8,
+  "relevant_stories": 3,
+  "stories": [
+    {
+      "rank": 1,
+      "story_id": "44308558",
+      "title": "Terpstra Keyboard",
+      "url": "http://terpstrakeyboard.com/web-app/keys.htm",
+      "points": 99,
+      "author": "xeonmc",
+      "time_posted": "2 hours ago",
+      "comments_count": 30,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44308558",
+      "scraped_at": "2025-06-18T14:42:17.486888",
+      "relevance_score": 0.22739824652671814,
+      "relevance_reasoning": "Best match: 'tech startups' (high_priority) - similarity: 0.227",
+      "ai_refined": false,
+      "is_relevant": false
+    },
+    {
+      "rank": 2,
+      "story_id": "44309520",
+      "title": "Homomorphically Encrypting CRDTs",
+      "url": "https://jakelazaroff.com/words/homomorphically-encrypted-crdts/",
+      "points": 20,
+      "author": "jakelazaroff",
+      "time_posted": "42 minutes ago",
+      "comments_count": 4,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44309520",
+      "scraped_at": "2025-06-18T14:42:17.563634",
+      "relevance_score": 0.16831792891025543,
+      "relevance_reasoning": "Best match: 'mathematics' (high_priority) - similarity: 0.168",
+      "ai_refined": false,
+      "is_relevant": false
+    },
+    {
+      "rank": 3,
+      "story_id": "44307290",
+      "title": "MiniMax-M1 open-weight, large-scale hybrid-attention reasoning model",
+      "url": "https://github.com/MiniMax-AI/MiniMax-M1",
+      "points": 208,
+      "author": "danboarder",
+      "time_posted": "6 hours ago",
+      "comments_count": 46,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44307290",
+      "scraped_at": "2025-06-18T14:42:17.640033",
+      "relevance_score": 0.35496461391448975,
+      "relevance_reasoning": "Best match: 'AI agents' (high_priority) - similarity: 0.355",
+      "ai_refined": true,
+      "article_summary": "The MiniMax-M1 model, introduced as the world's first open-weight, large-scale hybrid-attention reasoning model, boasts 456 billion parameters, with 45.9 billion activated per token. It features a hybrid Mixture-of-Experts (MoE) architecture and a lightning attention mechanism, supporting a context length of 1 million tokens—8 times that of DeepSeek R1. Notably, at a generation length of 100K tokens, MiniMax-M1 consumes only 25% of the FLOPs compared to DeepSeek R1. In benchmark tests, the MiniMax-M1-80K model achieved a score of 96.8 on MATH-500, outperforming competitors like Qwen3-235B and DeepSeek-R1 across various complex tasks, including software engineering and long-context understanding. For deployment, the model can be served using vLLM for optimal performance, with detailed guides available for both vLLM and Transformers.",
+      "comments_analysis": {
+        "total_comments_analyzed": 5,
+        "main_themes": [
+          "JSON parsing failed"
+        ],
+        "agreement_points": [],
+        "disagreement_points": [],
+        "sentiment_summary": "Analysis failed due to parsing error",
+        "top_comment_summary": "Summary not available due to parsing error",
+        "structured_sentiment": {},
+        "comment_stats": {
+          "total_comments": 5,
+          "avg_comment_length": 161,
+          "comments_with_scores": 0
+        },
+        "top_comments": [
+          {
+            "rank": 1,
+            "comment_id": "44308898",
+            "author": "reedlaw",
+            "time_posted": "2 hours ago",
+            "score": null,
+            "text": "In case you're wondering what it takes to run it, the answer is 8x H200 141GB [1] which costs $250k [2].\n1. https://github.com/MiniMax-AI/MiniMax-M1/issues/2#issuecomme...\n2. https://www.ebay.com/itm/335830302628",
+            "length": 25
+          },
+          {
+            "rank": 2,
+            "comment_id": "44309181",
+            "author": "incomingpain",
+            "time_posted": "1 hour ago",
+            "score": null,
+            "text": "That's full quantization. If you run Q4 or Q8 you can run this on <$10,000 equipment.",
+            "length": 16
+          },
+          {
+            "rank": 3,
+            "comment_id": "44309710",
+            "author": "deadbabe",
+            "time_posted": "13 minutes ago",
+            "score": null,
+            "text": "No point in running anything but full quantization.",
+            "length": 8
+          },
+          {
+            "rank": 4,
+            "comment_id": "44309346",
+            "author": "cma",
+            "time_posted": "1 hour ago",
+            "score": null,
+            "text": "And if you add in heavy sparsification it should fit and run on a raspberry pi.",
+            "length": 16
+          },
+          {
+            "rank": 5,
+            "comment_id": "44309449",
+            "author": "rvz",
+            "time_posted": "49 minutes ago",
+            "score": null,
+            "text": "So in around 6 months, we will see that the person who bought this H200 in the listing just got scammed for $250k and will realize that you just needed specific quantizations to the model and a few optimizations to run locally.\nUnless they want to train their own model, buying this for inference for $250k is unnecessary and still isn't enough for a fully production deployment.",
+            "length": 67
+          }
+        ]
+      },
+      "is_relevant": true
+    },
+    {
+      "rank": 4,
+      "story_id": "44309320",
+      "title": "Workout.cool – Open-source fitness coaching platform",
+      "url": "https://github.com/Snouzy/workout-cool",
+      "points": 28,
+      "author": "surgomat",
+      "time_posted": "1 hour ago",
+      "comments_count": 5,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44309320",
+      "scraped_at": "2025-06-18T14:42:17.716048",
+      "relevance_score": 0.3708552122116089,
+      "relevance_reasoning": "Best match: 'programming' (high_priority) - similarity: 0.371",
+      "ai_refined": true,
+      "is_relevant": false
+    },
+    {
+      "rank": 5,
+      "story_id": "44308711",
+      "title": "Is There a Half-Life for the Success Rates of AI Agents?",
+      "url": "https://www.tobyord.com/writing/half-life",
+      "points": 39,
+      "author": "EvgeniyZh",
+      "time_posted": "2 hours ago",
+      "comments_count": 7,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44308711",
+      "scraped_at": "2025-06-18T14:42:17.790714",
+      "relevance_score": 0.6532050371170044,
+      "relevance_reasoning": "Best match: 'AI agents' (high_priority) - similarity: 0.653",
+      "ai_refined": false,
+      "article_summary": "In the article \"Is there a Half-Life for the Success Rates of AI Agents?\" by Toby Ord, it is revealed that AI agents exhibit an exponentially declining success rate as task duration increases, modeled by a constant failure rate per minute. Citing Kwa et al. (2025) from METR, the article notes that the task length AI can handle doubles every 7 months, based on a suite of 170 tasks, with a 50% success rate achievable for tasks up to 59 minutes but only 15 minutes for an 80% success rate. The findings suggest that each agent has a \"half-life\" defined by the time it takes a human to complete tasks, highlighting a critical insight: \"the task length for an 80% success rate is 1/4 the task length for a 50% success rate.\" This model invites further exploration of AI capabilities across diverse tasks, while acknowledging limitations in generalizability.",
+      "comments_analysis": {
+        "total_comments_analyzed": 5,
+        "main_themes": [
+          "JSON parsing failed"
+        ],
+        "agreement_points": [],
+        "disagreement_points": [],
+        "sentiment_summary": "Analysis failed due to parsing error",
+        "top_comment_summary": "Summary not available due to parsing error",
+        "structured_sentiment": {},
+        "comment_stats": {
+          "total_comments": 5,
+          "avg_comment_length": 366,
+          "comments_with_scores": 0
+        },
+        "top_comments": [
+          {
+            "rank": 1,
+            "comment_id": "44309741",
+            "author": "mikeocool",
+            "time_posted": "11 minutes ago",
+            "score": null,
+            "text": "This very much aligns with my experience — I had a case yesterday where opus was trying to do something with a library, and it encountered a build error. Rather than fix the error, it decided to switch to another library. It then encountered another error and decided to switch back to the first library.\nI don’t think I’ve encountered a case where I’ve just let the LLM churn for more than a few minutes and gotten a good result. If it doesn’t solve an issue on the first or second pass, it seems to rapidly start making things up, make totally unrelated changes claiming they’ll fix the issue, or trying the same thing over and over.",
+            "length": 117
+          },
+          {
+            "rank": 2,
+            "comment_id": "44309812",
+            "author": "qazxcvbnmlp",
+            "time_posted": "0 minutes ago",
+            "score": null,
+            "text": "when this happens I do thew following\n1) switch to a more expensive llm and ask it to debug: add debugging statements, reason about what's going on, try small tasks, etc 2) find issue 3) ask it to summarize what was wrong and what to do differently next time 4) copy and paste that recommendation to a small text document 5) revert to the original state and ask the llm to make the change with the recommendation as context",
+            "length": 79
+          },
+          {
+            "rank": 3,
+            "comment_id": "44309797",
+            "author": "fcatalan",
+            "time_posted": "2 minutes ago",
+            "score": null,
+            "text": "I brought over the source of the Dear imgui library to a toy project and Cline/Gemini2.5 hallucinated the interface and when the compilation failed started editing the library to conform with it. I was all like: Nono no no no stop.",
+            "length": 41
+          },
+          {
+            "rank": 4,
+            "comment_id": "44309751",
+            "author": "the__alchemist",
+            "time_posted": "9 minutes ago",
+            "score": null,
+            "text": "This is consistent with my experience as well.",
+            "length": 8
+          },
+          {
+            "rank": 5,
+            "comment_id": "44309755",
+            "author": "deadbabe",
+            "time_posted": "8 minutes ago",
+            "score": null,
+            "text": "This is another reason why there’s no point in carefully constructing prompts and contexts trying to coax the right solution out of an LLM. The end result becomes more brittle with time.\nIf you can’t zero shot your way to success the LLM simply doesn’t have enough training for your problem and you need a human touch or slightly different trigger words. There have been times where I’ve gotten a solution with such a minimal prompt it practically feels like the LLM read my mind, that’s the vibe.",
+            "length": 88
+          }
+        ]
+      },
+      "is_relevant": true
+    },
+    {
+      "rank": 6,
+      "story_id": "44306859",
+      "title": "Scrappy - make little apps for you and your friends",
+      "url": "https://pontus.granstrom.me/scrappy/",
+      "points": 274,
+      "author": "8organicbits",
+      "time_posted": "8 hours ago",
+      "comments_count": 87,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44306859",
+      "scraped_at": "2025-06-18T14:42:17.864506",
+      "relevance_score": 0.2664358615875244,
+      "relevance_reasoning": "Best match: 'programming' (high_priority) - similarity: 0.266",
+      "ai_refined": false,
+      "is_relevant": false
+    },
+    {
+      "rank": 7,
+      "story_id": "44307629",
+      "title": "I counted all of the yurts in Mongolia using machine learning",
+      "url": "https://monroeclinton.com/counting-all-yurts-in-mongolia/",
+      "points": 109,
+      "author": "furkansahin",
+      "time_posted": "5 hours ago",
+      "comments_count": 22,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44307629",
+      "scraped_at": "2025-06-18T14:42:17.937709",
+      "relevance_score": 0.252787709236145,
+      "relevance_reasoning": "Best match: 'machine learning' (high_priority) - similarity: 0.253",
+      "ai_refined": false,
+      "is_relevant": false
+    },
+    {
+      "rank": 8,
+      "story_id": "44300102",
+      "title": "Honda conducts successful launch and landing of experimental reusable rocket",
+      "url": "https://global.honda/en/topics/2025/c_2025-06-17ceng.html",
+      "points": 1141,
+      "author": "LorenDB",
+      "time_posted": "22 hours ago",
+      "comments_count": 354,
+      "hn_discussion_url": "https://news.ycombinator.com/item?id=44300102",
+      "scraped_at": "2025-06-18T14:42:18.014991",
+      "relevance_score": 0.19073309004306793,
+      "relevance_reasoning": "Best match: 'tech startups' (high_priority) - similarity: 0.191",
+      "ai_refined": false,
+      "is_relevant": false
+    }
+  ]
+}

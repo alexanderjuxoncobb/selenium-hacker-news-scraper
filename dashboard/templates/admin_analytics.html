@@ -3,7 +3,7 @@
 {% block title %}Admin - Analytics - HN Scraper{% endblock %}
 
 {% block content %}
-<div class="px-4 sm:px-0">
+<div>
     <!-- Header -->
     <div class="mb-6">
         <div class="flex items-center justify-between">
@@ -27,7 +27,7 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -75,6 +75,22 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Cost Optimization Card -->
+        {% if cost_optimization %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-dollar-sign text-green-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-500">Cost Savings</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ cost_optimization.savings_percentage|default(0)|round }}%</p>
+                    <p class="text-xs text-gray-500 mt-1">${{ "%.3f"|format(cost_optimization.estimated_money_saved|default(0)) }} saved</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Recent Stories Stats -->
@@ -206,6 +222,38 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Cost Optimization Details (Admin Only) -->
+    {% if cost_optimization %}
+    <div class="bg-white shadow rounded-lg mt-6">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">💰 Cost Optimization Details</h3>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-500">API Calls Made</div>
+                    <div class="text-xl font-semibold text-gray-900">{{ cost_optimization.api_calls_made|default(0) }}</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-500">API Calls Saved</div>
+                    <div class="text-xl font-semibold text-green-600">{{ cost_optimization.api_calls_saved|default(0) }}</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-500">Money Spent</div>
+                    <div class="text-xl font-semibold text-gray-900">${{ "%.3f"|format(cost_optimization.estimated_money_spent|default(0)) }}</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-500">Cache Entries</div>
+                    <div class="text-xl font-semibold text-blue-600">{{ cost_optimization.cache_size|default(0) }}</div>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-sm text-gray-600">
+                <p>💡 Cost optimization is achieved through intelligent caching and local embeddings, reducing OpenAI API calls while maintaining quality.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <script>

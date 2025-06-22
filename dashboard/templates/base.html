@@ -35,7 +35,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Navigation -->
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,7 +72,7 @@
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <span class="text-sm text-gray-500">
+                    <span class="hidden lg:block text-sm text-gray-500">
                         <i class="fas fa-clock mr-1"></i>
                         Updated daily at 8:30 AM London time
                     </span>
@@ -82,12 +82,12 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-grow">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-12">
+    <footer class="bg-white border-t mt-auto">
         <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
             <div class="text-center text-sm text-gray-500">
                 <p>🤖 Powered by AI • Data from <a href="https://news.ycombinator.com" class="text-hn-orange hover:underline">Hacker News</a></p>

@@ -6,7 +6,7 @@ Database models and operations for HN Scraper Dashboard
 import sqlite3
 import json
 from datetime import datetime, date
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import os
 import uuid
@@ -16,6 +16,7 @@ class Story:
     id: Optional[int]
     date: str
     rank: int
+    story_id: str  # HN story ID for deduplication
     title: str
     url: str
     points: int
@@ -23,12 +24,20 @@ class Story:
     comments_count: int
     hn_discussion_url: str
     article_summary: Optional[str]
-    is_relevant: bool
-    relevance_score: float
     scraped_at: str
     was_cached: bool = False
     comments_analysis: Optional[Dict] = None
     tags: Optional[List[str]] = None
+
+@dataclass
+class UserStoryRelevance:
+    id: Optional[int]
+    user_id: str
+    story_id: int  # References stories.id
+    is_relevant: bool
+    relevance_score: float
+    relevance_reasoning: Optional[str]
+    calculated_at: str
 
 @dataclass
 class UserInteraction:
@@ -91,11 +100,13 @@ class DatabaseManager:
             """)
             
             # Stories table (shared across users with tags for better categorization)
+            # Note: is_relevant and relevance_score moved to user_story_relevance table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS stories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT NOT NULL,
                     rank INTEGER NOT NULL,
+                    story_id TEXT,  -- HN story ID for deduplication
                     title TEXT NOT NULL,
                     url TEXT NOT NULL,
                     points INTEGER DEFAULT 0,
@@ -104,14 +115,21 @@ class DatabaseManager:
                     hn_discussion_url TEXT,
                     article_summary TEXT,
                     comments_analysis TEXT,  -- JSON string
-                    is_relevant BOOLEAN DEFAULT FALSE,
-                    relevance_score REAL DEFAULT 0.0,
                     scraped_at TEXT NOT NULL,
                     was_cached BOOLEAN DEFAULT FALSE,  -- Track if story was served from cache
                     tags TEXT,  -- JSON array of semantic tags for categorization
                     UNIQUE(date, rank)
                 )
             """)
+            
+            # Add story_id column if it doesn't exist (migration)
+            try:
+                cursor.execute("ALTER TABLE stories ADD COLUMN story_id TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+                
+            # Note: For existing databases, is_relevant and relevance_score columns will still exist
+            # but won't be used. New relevance data goes in user_story_relevance table.
             
             # User interactions table
             cursor.execute("""
@@ -152,6 +170,22 @@ class DatabaseManager:
                 )
             """)
             
+            # User-specific story relevance table (replaces is_relevant in stories table)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_story_relevance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    story_id INTEGER NOT NULL,
+                    is_relevant BOOLEAN NOT NULL,
+                    relevance_score REAL NOT NULL,
+                    relevance_reasoning TEXT,
+                    calculated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (story_id) REFERENCES stories (id),
+                    UNIQUE(user_id, story_id)
+                )
+            """)
+            
             # User-specific story notes table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS story_notes (
@@ -177,11 +211,13 @@ class DatabaseManager:
         try:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_user_id ON users (user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_date ON stories (date)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_relevant ON stories (is_relevant)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_stories_story_id ON stories (story_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_user ON user_interactions (user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_story ON user_interactions (story_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactions_type ON user_interactions (interaction_type)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_interests_user ON user_interest_weights (user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_relevance_user_story ON user_story_relevance (user_id, story_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_relevance_user ON user_story_relevance (user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_user_story ON story_notes (user_id, story_id)")
         except Exception as e:
             print(f"⚠️ Index creation warning: {e}")
@@ -211,13 +247,14 @@ class DatabaseManager:
                     
                     cursor.execute("""
                         INSERT OR REPLACE INTO stories 
-                        (date, rank, title, url, points, author, comments_count, 
+                        (date, rank, story_id, title, url, points, author, comments_count, 
                          hn_discussion_url, article_summary, comments_analysis, 
-                         is_relevant, relevance_score, scraped_at, was_cached, tags)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         scraped_at, was_cached, tags)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         scrape_date,
                         story.get('rank', 0),
+                        story.get('story_id', ''),
                         story.get('title', ''),
                         story.get('url', ''),
                         story.get('points', 0),
@@ -226,8 +263,6 @@ class DatabaseManager:
                         story.get('hn_discussion_url', ''),
                         story.get('article_summary'),
                         comments_analysis_json,
-                        story.get('is_relevant', False),
-                        story.get('relevance_score', 1.0 if story.get('is_relevant', False) else 0.0),
                         story.get('scraped_at', data.get('scrape_date', '')),
                         story.get('was_cached', False),
                         tags_json
@@ -239,15 +274,87 @@ class DatabaseManager:
         except Exception as e:
             print(f"❌ Error importing JSON data: {str(e)}")
     
+    def import_multi_user_json_data(self, json_file_path: str, user_id: str = None) -> None:
+        """Import multi-user JSON data with user-specific relevance"""
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            scrape_date = data.get('scrape_date', '')[:10]  # Get YYYY-MM-DD part
+            stories = data.get('stories', [])
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                for story in stories:
+                    # Convert comments_analysis to JSON string if it exists
+                    comments_analysis_json = None
+                    if story.get('comments_analysis'):
+                        comments_analysis_json = json.dumps(story['comments_analysis'])
+                    
+                    # Convert tags to JSON string if it exists
+                    tags_json = None
+                    if story.get('tags'):
+                        tags_json = json.dumps(story['tags'])
+                    
+                    # Insert story (without relevance fields)
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO stories 
+                        (date, rank, story_id, title, url, points, author, comments_count, 
+                         hn_discussion_url, article_summary, comments_analysis, 
+                         scraped_at, was_cached, tags)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        scrape_date,
+                        story.get('rank', 0),
+                        story.get('story_id', ''),
+                        story.get('title', ''),
+                        story.get('url', ''),
+                        story.get('points', 0),
+                        story.get('author', ''),
+                        story.get('comments_count', 0),
+                        story.get('hn_discussion_url', ''),
+                        story.get('article_summary'),
+                        comments_analysis_json,
+                        story.get('scraped_at', data.get('scrape_date', '')),
+                        story.get('was_cached', False),
+                        tags_json
+                    ))
+                    
+                    # Get the story ID for relevance storage
+                    story_db_id = cursor.lastrowid
+                    
+                    # Store user-specific relevance if user_id provided and relevance data exists
+                    if user_id and 'is_relevant' in story:
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO user_story_relevance 
+                            (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            user_id,
+                            story_db_id,
+                            story.get('is_relevant', False),
+                            story.get('relevance_score', 0.0),
+                            story.get('relevance_reasoning'),
+                            datetime.now().isoformat()
+                        ))
+                
+                conn.commit()
+                print(f"✅ Imported {len(stories)} stories from {json_file_path}")
+                if user_id:
+                    print(f"✅ Stored relevance data for user {user_id}")
+                
+        except Exception as e:
+            print(f"❌ Error importing multi-user JSON data: {str(e)}")
+    
     def get_stories_by_date(self, target_date: str) -> List[Story]:
         """Get all stories for a specific date"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, date, rank, title, url, points, author, comments_count,
+                SELECT id, date, rank, story_id, title, url, points, author, comments_count,
                        hn_discussion_url, article_summary, comments_analysis,
-                       is_relevant, relevance_score, scraped_at, 
-                       COALESCE(was_cached, 0) as was_cached, tags
+                       scraped_at, COALESCE(was_cached, 0) as was_cached, tags
                 FROM stories 
                 WHERE date = ? 
                 ORDER BY rank
@@ -258,35 +365,159 @@ class DatabaseManager:
             
             for row in rows:
                 comments_analysis = None
-                if row[10]:  # comments_analysis column
+                if row[11]:  # comments_analysis column
                     try:
-                        comments_analysis = json.loads(row[10])
+                        comments_analysis = json.loads(row[11])
                     except json.JSONDecodeError:
                         pass
                 
                 tags = None
-                if row[15]:  # tags column
+                if row[14]:  # tags column
                     try:
-                        tags = json.loads(row[15])
+                        tags = json.loads(row[14])
                     except json.JSONDecodeError:
                         pass
                 
                 story = Story(
-                    id=row[0], date=row[1], rank=row[2], title=row[3], url=row[4],
-                    points=row[5], author=row[6], comments_count=row[7],
-                    hn_discussion_url=row[8], article_summary=row[9],
-                    is_relevant=bool(row[11]), relevance_score=row[12],
-                    scraped_at=row[13], was_cached=bool(row[14]), 
+                    id=row[0], date=row[1], rank=row[2], story_id=row[3], title=row[4], url=row[5],
+                    points=row[6], author=row[7], comments_count=row[8],
+                    hn_discussion_url=row[9], article_summary=row[10],
+                    scraped_at=row[12], was_cached=bool(row[13]), 
                     comments_analysis=comments_analysis, tags=tags
                 )
                 stories.append(story)
             
             return stories
     
+    def story_exists_by_hn_id(self, story_id: str) -> bool:
+        """Check if a story with the given HN story ID already exists in database"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = ?", (story_id,))
+            return cursor.fetchone()[0] > 0
+    
+    def store_user_story_relevance(self, user_id: str, story_db_id: int, is_relevant: bool, 
+                                 relevance_score: float, relevance_reasoning: str = None) -> None:
+        """Store user-specific relevance data for a story"""
+        # Ensure relevance_score is a proper float
+        try:
+            relevance_score = float(relevance_score)
+        except (ValueError, TypeError):
+            relevance_score = 0.0
+            
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Debug what we're storing
+            print(f"🔍 Storing relevance: user_id={user_id}, story_id={story_db_id}, is_relevant={is_relevant} (type: {type(is_relevant)}), score={relevance_score}")
+            
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_story_relevance 
+                (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id, story_db_id, int(is_relevant), relevance_score, 
+                relevance_reasoning, datetime.now().isoformat()
+            ))
+            conn.commit()
+    
+    def get_user_story_relevance(self, user_id: str, story_db_id: int) -> Optional[UserStoryRelevance]:
+        """Get user-specific relevance for a story"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, user_id, story_id, is_relevant, relevance_score, 
+                       relevance_reasoning, calculated_at
+                FROM user_story_relevance 
+                WHERE user_id = ? AND story_id = ?
+            """, (user_id, story_db_id))
+            
+            row = cursor.fetchone()
+            if row:
+                return UserStoryRelevance(
+                    id=row[0], user_id=row[1], story_id=row[2],
+                    is_relevant=bool(row[3]), relevance_score=row[4],
+                    relevance_reasoning=row[5], calculated_at=row[6]
+                )
+            return None
+    
+    def get_stories_with_user_relevance(self, user_id: str, target_date: str) -> List[Tuple[Story, Optional[UserStoryRelevance]]]:
+        """Get stories for a date with user-specific relevance data"""
+        # Check if user can access this date
+        user = self.get_user(user_id)
+        if user:
+            signup_date = user.created_at.split('T')[0]  # Get YYYY-MM-DD from ISO format
+            if target_date < signup_date:
+                return []  # User cannot access stories before their signup date
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
+                       s.comments_count, s.hn_discussion_url, s.article_summary, s.comments_analysis,
+                       s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags,
+                       r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
+                FROM stories s
+                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = ?
+                WHERE s.date = ? AND s.date >= (SELECT date(created_at) FROM users WHERE user_id = ?)
+                ORDER BY s.rank
+            """, (user_id, target_date, user_id))
+            
+            rows = cursor.fetchall()
+            results = []
+            
+            for row in rows:
+                # Parse comments_analysis
+                comments_analysis = None
+                if row[11]:
+                    try:
+                        comments_analysis = json.loads(row[11])
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Parse tags
+                tags = None
+                if row[14]:
+                    try:
+                        tags = json.loads(row[14])
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Create Story object
+                story = Story(
+                    id=row[0], date=row[1], rank=row[2], story_id=row[3], title=row[4], url=row[5],
+                    points=row[6], author=row[7], comments_count=row[8],
+                    hn_discussion_url=row[9], article_summary=row[10],
+                    scraped_at=row[12], was_cached=bool(row[13]), 
+                    comments_analysis=comments_analysis, tags=tags
+                )
+                
+                # Create UserStoryRelevance object if relevance data exists
+                relevance = None
+                if row[15] is not None:  # rel_id
+                    # Handle potential data type issues with relevance_score
+                    try:
+                        score = float(row[17]) if row[17] is not None else 0.0
+                    except (ValueError, TypeError):
+                        # If score is corrupted (e.g., blob data), default to 0.0
+                        print(f"⚠️ Corrupted relevance score for story {row[0]}, user {user_id}")
+                        score = 0.0
+                    
+                    relevance = UserStoryRelevance(
+                        id=row[15], user_id=user_id, story_id=row[0],
+                        is_relevant=bool(row[16]), relevance_score=score,
+                        relevance_reasoning=row[18], calculated_at=row[19]
+                    )
+                
+                results.append((story, relevance))
+            
+            return results
+    
     def get_relevant_stories_by_date(self, target_date: str) -> List[Story]:
-        """Get only relevant stories for a specific date"""
+        """Get only relevant stories for a specific date (legacy method)"""
+        # Note: This method is deprecated since relevance is now user-specific
+        # Keeping for backward compatibility
         stories = self.get_stories_by_date(target_date)
-        return [story for story in stories if story.is_relevant]
+        return stories  # Return all stories since relevance is user-specific now
     
     def get_user_relevant_stories_by_date(self, user_id: str, target_date: str) -> List[Story]:
         """Get stories relevant to a specific user for a specific date based on their interests"""
@@ -411,6 +642,18 @@ class DatabaseManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT date FROM stories ORDER BY date DESC")
+            return [row[0] for row in cursor.fetchall()]
+    
+    def get_available_dates_for_user(self, user_id: str) -> List[str]:
+        """Get all dates that have scraped data and are accessible to the user (from signup date onwards)"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT s.date 
+                FROM stories s
+                WHERE s.date >= (SELECT date(created_at) FROM users WHERE user_id = ?)
+                ORDER BY s.date DESC
+            """, (user_id,))
             return [row[0] for row in cursor.fetchall()]
     
     def get_stats_by_date(self, target_date: str) -> Dict:
@@ -782,6 +1025,258 @@ class DatabaseManager:
                 
         except Exception as e:
             print(f"⚠️ Migration warning: {e}")
+
+    def batch_process_user_relevance(self, user_id: str, limit_days: int = 30) -> Dict[str, int]:
+        """
+        Process relevance for all existing stories for a new user.
+        Returns statistics about processing.
+        """
+        import sys
+        import os
+        # Add parent directory to path to import ai_pipeline
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from ai_pipeline import CostOptimizedAI
+        
+        stats = {
+            'total_stories': 0,
+            'relevant_stories': 0,
+            'processed_stories': 0,
+            'cached_stories': 0
+        }
+        
+        # Get user interests
+        user_interests = self.get_user_interests_by_category(user_id)
+        if not any(user_interests.values()):
+            return stats  # No interests to process
+        
+        # Initialize AI pipeline
+        ai_pipeline = CostOptimizedAI()
+        
+        # Get all recent stories (limit to last N days for performance)
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, title, url, article_summary, comments_analysis, tags
+                FROM stories
+                WHERE date >= date('now', '-' || ? || ' days')
+                ORDER BY date DESC, rank ASC
+            """, (limit_days,))
+            
+            stories = cursor.fetchall()
+            stats['total_stories'] = len(stories)
+            
+            # Process each story
+            for story_row in stories:
+                story_id, title, url, article_summary, comments_analysis_json, tags_json = story_row
+                
+                # Check if relevance already calculated
+                existing_relevance = self.get_user_story_relevance(user_id, story_id)
+                if existing_relevance:
+                    stats['cached_stories'] += 1
+                    if existing_relevance.is_relevant:
+                        stats['relevant_stories'] += 1
+                    continue
+                
+                # Prepare story data for relevance check
+                story_data = {
+                    'title': title,
+                    'url': url,
+                    'article_summary': article_summary
+                }
+                
+                # Convert user interests to expected format
+                formatted_interests = {
+                    'high_priority': user_interests.get('high', []),
+                    'medium_priority': user_interests.get('medium', []),
+                    'low_priority': user_interests.get('low', [])
+                }
+                
+                # Calculate relevance using AI pipeline
+                is_relevant, relevance_score, relevance_reasoning = ai_pipeline.is_relevant_story_local(
+                    story_data, formatted_interests
+                )
+                
+                # Store relevance data
+                self.store_user_story_relevance(
+                    user_id=user_id,
+                    story_db_id=story_id,
+                    is_relevant=is_relevant,
+                    relevance_score=relevance_score,
+                    relevance_reasoning=relevance_reasoning
+                )
+                
+                stats['processed_stories'] += 1
+                if is_relevant:
+                    stats['relevant_stories'] += 1
+        
+        return stats
+    
+    def batch_process_user_relevance_from_date(self, user_id: str, start_date: str) -> Dict[str, int]:
+        """
+        Process relevance for stories from a specific date onwards for a new user.
+        This is optimized for new user onboarding to only process from their signup date.
+        """
+        import sys
+        import os
+        # Add parent directory to path to import ai_pipeline
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from ai_pipeline import CostOptimizedAI
+        
+        stats = {
+            'total_stories': 0,
+            'relevant_stories': 0,
+            'processed_stories': 0,
+            'cached_stories': 0
+        }
+        
+        # Get user interests
+        user_interests = self.get_user_interests_by_category(user_id)
+        print(f"🔍 Retrieved interests for user {user_id}: {user_interests}")
+        if not any(user_interests.values()):
+            print(f"❌ No interests found for user {user_id}")
+            return stats  # No interests to process
+        print(f"✅ Found interests: {sum(len(v) for v in user_interests.values())} total")
+        
+        # Initialize AI pipeline
+        ai_pipeline = CostOptimizedAI()
+        
+        # Get stories from the start date onwards
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, title, url, article_summary, comments_analysis, tags
+                FROM stories
+                WHERE date >= ?
+                ORDER BY date DESC, rank ASC
+            """, (start_date,))
+            
+            stories = cursor.fetchall()
+            stats['total_stories'] = len(stories)
+            
+            # Process each story
+            for story_row in stories:
+                story_id, title, url, article_summary, comments_analysis_json, tags_json = story_row
+                
+                # Check if relevance already calculated
+                existing_relevance = self.get_user_story_relevance(user_id, story_id)
+                if existing_relevance:
+                    stats['cached_stories'] += 1
+                    if existing_relevance.is_relevant:
+                        stats['relevant_stories'] += 1
+                    continue
+                
+                # Prepare story data for relevance check
+                story_data = {
+                    'title': title,
+                    'url': url,
+                    'article_summary': article_summary
+                }
+                
+                # Convert user interests to expected format
+                formatted_interests = {
+                    'high_priority': user_interests.get('high', []),
+                    'medium_priority': user_interests.get('medium', []),
+                    'low_priority': user_interests.get('low', [])
+                }
+                
+                # Calculate relevance using AI pipeline
+                is_relevant, relevance_score, relevance_reasoning = ai_pipeline.is_relevant_story_local(
+                    story_data, formatted_interests
+                )
+                
+                # Store relevance data
+                self.store_user_story_relevance(
+                    user_id=user_id,
+                    story_db_id=story_id,
+                    is_relevant=is_relevant,
+                    relevance_score=relevance_score,
+                    relevance_reasoning=relevance_reasoning
+                )
+                
+                stats['processed_stories'] += 1
+                if is_relevant:
+                    stats['relevant_stories'] += 1
+        
+        return stats
+    
+    def get_recent_stories_without_relevance(self, user_id: str, limit: int = 10) -> List[Story]:
+        """
+        Get recent stories that don't have relevance calculated for this user.
+        Used for on-demand processing.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
+                       s.author, s.comments_count, s.hn_discussion_url, s.article_summary,
+                       s.comments_analysis, s.scraped_at, COALESCE(s.was_cached, 0), s.tags
+                FROM stories s
+                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = ?
+                WHERE r.id IS NULL
+                ORDER BY s.date DESC, s.rank ASC
+                LIMIT ?
+            """, (user_id, limit))
+            
+            stories = []
+            for row in cursor.fetchall():
+                comments_analysis = None
+                if row[11]:
+                    try:
+                        comments_analysis = json.loads(row[11])
+                    except json.JSONDecodeError:
+                        pass
+                
+                tags = None
+                if row[14]:
+                    try:
+                        tags = json.loads(row[14])
+                    except json.JSONDecodeError:
+                        pass
+                
+                stories.append(Story(
+                    id=row[0], date=row[1], rank=row[2], story_id=row[3],
+                    title=row[4], url=row[5], points=row[6], author=row[7],
+                    comments_count=row[8], hn_discussion_url=row[9],
+                    article_summary=row[10], comments_analysis=comments_analysis,
+                    scraped_at=row[12], was_cached=bool(row[13]), tags=tags
+                ))
+            
+            return stories
+
+    def get_user_interests_by_category(self, user_id: str) -> Dict[str, List[str]]:
+        """Get user interests organized by category"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT keyword, category
+                FROM user_interest_weights
+                WHERE user_id = ?
+                ORDER BY weight DESC, keyword
+            """, (user_id,))
+            
+            # Initialize with both legacy and new category formats
+            interests = {
+                'high': [],
+                'medium': [], 
+                'low': [],
+                'technology': [],
+                'business': [],
+                'science': [],
+                'general': []
+            }
+            
+            for keyword, category in cursor.fetchall():
+                # Handle both legacy priority format and new category format
+                if category in interests:
+                    interests[category].append(keyword)
+                    
+                    # For new categories, also add to legacy format for backward compatibility
+                    # All new interests use weight 1.0, so map them to 'high' priority
+                    if category in ['technology', 'business', 'science', 'general']:
+                        if keyword not in interests['high']:  # Avoid duplicates
+                            interests['high'].append(keyword)
+            
+            return interests
 
     def close(self):
         """Close database connection (SQLite auto-closes, but good practice)"""

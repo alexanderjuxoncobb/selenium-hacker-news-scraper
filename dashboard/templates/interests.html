@@ -5,41 +5,151 @@
 {% block nav_interests %}text-gray-900{% endblock %}
 
 {% block content %}
-<div class="px-4 sm:px-0">
+<div>
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">
             ❤️ Interest Management
         </h1>
         <p class="mt-1 text-sm text-gray-600">
-            Configure your interests to improve story relevance filtering
+            Manage topics you're interested in to improve story relevance filtering
         </p>
+    </div>
+
+    <!-- Add New Interest -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Add New Interest</h2>
+            <p class="text-sm text-gray-500">Add topics you want to see stories about</p>
+            <div class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-orange-400 text-sm"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-orange-700">
+                            <strong>Note:</strong> New interests will only take effect in future HN scrapes, not in stories already processed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <form method="POST" action="/interests/{{ user.user_id }}/update" class="flex flex-row gap-3 items-center">
+                <div class="flex-1">
+                    <input 
+                        type="text" 
+                        name="keyword" 
+                        placeholder="Enter a topic (e.g., machine learning, cryptocurrency, climate)"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        required
+                    >
+                </div>
+                <div class="w-48 flex-shrink-0">
+                    <select 
+                        name="category" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        required
+                    >
+                        <option value="">Select Category</option>
+                        <option value="technology">Technology & Programming</option>
+                        <option value="business">Business & Finance</option>
+                        <option value="science">Science & Health</option>
+                        <option value="general">General Interest</option>
+                    </select>
+                </div>
+                <button 
+                    type="submit" 
+                    class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                >
+                    Add Interest
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Popular Topics -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Quick Add: Popular Topics</h2>
+            <p class="text-sm text-gray-500">Click to quickly add common interests</p>
+        </div>
+        <div class="px-6 py-4">
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                        <i class="fas fa-code mr-2 text-blue-500"></i>Technology & Programming
+                    </h4>
+                    <div class="flex flex-wrap gap-2" id="tech-topics">
+                        {% set existing_keywords = interest_weights | map(attribute='keyword') | map('lower') | list %}
+                        {% for topic in ['artificial intelligence', 'machine learning', 'software development', 'robotics', 'blockchain', 'cybersecurity'] %}
+                            {% if topic.lower() not in existing_keywords %}
+                            <button onclick="quickAddInterest('{{ topic }}', 'technology')" 
+                                    class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition-colors"
+                                    data-topic="{{ topic }}">
+                                {{ topic }}
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                        <i class="fas fa-briefcase mr-2 text-green-500"></i>Business & Finance
+                    </h4>
+                    <div class="flex flex-wrap gap-2" id="business-topics">
+                        {% for topic in ['startups', 'cryptocurrency', 'venture capital', 'economics', 'fintech', 'business strategy'] %}
+                            {% if topic.lower() not in existing_keywords %}
+                            <button onclick="quickAddInterest('{{ topic }}', 'business')" 
+                                    class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors"
+                                    data-topic="{{ topic }}">
+                                {{ topic }}
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                        <i class="fas fa-flask mr-2 text-purple-500"></i>Science & Health
+                    </h4>
+                    <div class="flex flex-wrap gap-2" id="science-topics">
+                        {% for topic in ['climate change', 'biotechnology', 'medicine', 'space exploration', 'physics', 'psychology'] %}
+                            {% if topic.lower() not in existing_keywords %}
+                            <button onclick="quickAddInterest('{{ topic }}', 'science')" 
+                                    class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200 transition-colors"
+                                    data-topic="{{ topic }}">
+                                {{ topic }}
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Current Interests -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Your Interest Categories</h2>
-            <p class="text-sm text-gray-500">Organize your interests by priority to improve story filtering</p>
+            <h2 class="text-lg font-medium text-gray-900">Your Topics of Interest</h2>
+            <p class="text-sm text-gray-500">Organize your interests by topic to improve story filtering</p>
         </div>
         <div class="px-6 py-4">
             {% if interest_weights %}
             <div class="space-y-6">
-                {% for category in ['high', 'medium', 'low'] %}
+                {% for category in ['technology', 'business', 'science', 'general'] %}
                 <div>
                     <h3 class="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide flex items-center">
-                        {{ category|title }} Priority
-                        {% if category == 'high' %}
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
-                            🔥 Most Important
-                        </span>
-                        {% elif category == 'medium' %}
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
-                            ⭐ Moderate
-                        </span>
+                        {% if category == 'technology' %}
+                            <i class="fas fa-code mr-2 text-blue-500"></i>Technology & Programming
+                        {% elif category == 'business' %}
+                            <i class="fas fa-briefcase mr-2 text-green-500"></i>Business & Finance
+                        {% elif category == 'science' %}
+                            <i class="fas fa-flask mr-2 text-purple-500"></i>Science & Health
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ml-2">
-                            🔍 Lower Priority
-                        </span>
+                            <i class="fas fa-globe mr-2 text-orange-500"></i>General Interest
                         {% endif %}
                     </h3>
                     
@@ -51,7 +161,7 @@
                             <span class="text-sm font-medium text-gray-900 truncate mr-2">{{ interest.keyword }}</span>
                             <button onclick="deleteInterest({{ interest.id }}, '{{ interest.keyword }}')" 
                                     class="text-red-500 hover:text-red-700 p-1 rounded transition-colors flex-shrink-0"
-                                    title="Delete interest">
+                                    title="Remove interest">
                                 <i class="fas fa-times text-xs"></i>
                             </button>
                         </div>
@@ -59,231 +169,54 @@
                     </div>
                     {% else %}
                     <div class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                        <p class="text-sm">No {{ category }} priority interests yet</p>
-                        <p class="text-xs">Add some below!</p>
+                        <p class="text-sm">No {{ category }} interests yet</p>
+                        <p class="text-xs">Add some above!</p>
                     </div>
                     {% endif %}
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-gray-500 text-center py-8">No interests configured yet. Add some below to get started!</p>
+            <div class="text-center py-8">
+                <p class="text-gray-500 text-lg">No interests configured yet</p>
+                <p class="text-gray-400 text-sm">Add some topics above to get started!</p>
+            </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Add New Interest -->
-    <div class="bg-white shadow rounded-lg mb-6">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Add New Interest</h2>
-            <p class="text-sm text-gray-500">Add keywords or phrases that interest you to any priority category</p>
-        </div>
-        <div class="px-6 py-4">
-            <form action="/interests/{{ user.user_id }}/update" method="post" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="keyword" class="block text-sm font-medium text-gray-700">Keyword/Phrase</label>
-                        <input type="text" name="keyword" id="keyword" required
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm"
-                               placeholder="e.g., machine learning, React, OpenAI">
-                    </div>
-                    <div>
-                        <label for="category" class="block text-sm font-medium text-gray-700">Priority Category</label>
-                        <select name="category" id="category" required
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
-                            <option value="high">🔥 High Priority - Most important to me</option>
-                            <option value="medium" selected>⭐ Medium Priority - Moderately interesting</option>
-                            <option value="low">🔍 Low Priority - Occasionally relevant</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <button type="submit" 
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hn-orange">
-                        <i class="fas fa-plus mr-2"></i>Add Interest
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Interaction Statistics -->
+    <!-- Interaction Stats -->
     {% if interaction_stats %}
-    <div class="bg-white shadow rounded-lg">
+    <div class="bg-white shadow rounded-lg mt-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Your Reading Behavior (Last 30 Days)</h2>
-            <p class="text-sm text-gray-500">This data helps improve relevance filtering</p>
+            <h2 class="text-lg font-medium text-gray-900">Your Activity</h2>
+            <p class="text-sm text-gray-500">How you've been engaging with stories</p>
         </div>
         <div class="px-6 py-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 {% for interaction_type, stats in interaction_stats.items() %}
-                <div class="text-center p-4 border border-gray-200 rounded-lg">
-                    <div class="text-2xl mb-2">
-                        {% if interaction_type == 'click' %}🖱️
-                        {% elif interaction_type == 'thumbs_up' %}👍
-                        {% elif interaction_type == 'thumbs_down' %}👎
-                        {% elif interaction_type == 'save' %}📑
-                        {% else %}📊
-                        {% endif %}
-                    </div>
-                    <div class="text-lg font-semibold text-gray-900">{{ stats.count }}</div>
-                    <div class="text-sm text-gray-500">{{ interaction_type.replace('_', ' ').title() }}</div>
-                    {% if stats.avg_duration > 0 %}
-                    <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
-                    {% endif %}
+                {% if stats['count'] > 0 %}
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <div class="text-2xl font-bold text-gray-900">{{ stats['count'] }}</div>
+                    <div class="text-sm text-gray-500 capitalize">{{ interaction_type.replace('_', ' ') }}</div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
     </div>
     {% endif %}
-
-    <!-- Interest Learning System -->
-    <div class="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="font-medium text-purple-900">
-                <i class="fas fa-brain mr-1"></i>
-                Automatic Interest Learning
-            </h3>
-            <button onclick="triggerLearning()" 
-                    id="learning-trigger-btn"
-                    class="px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors">
-                <i class="fas fa-play mr-1"></i>Run Learning
-            </button>
-        </div>
-        
-        <div id="learning-stats" class="text-sm text-purple-800">
-            <div class="flex items-center space-x-4 mb-2">
-                <span>📊 Loading learning statistics...</span>
-            </div>
-        </div>
-        
-        <div class="text-xs text-purple-700 bg-purple-100 rounded p-2 mt-2">
-            <strong>How it works:</strong> The system analyzes your thumbs up/down feedback to automatically adjust interest weights. 
-            Stories you like increase related interest weights, stories you dislike decrease them. 
-            Learning runs automatically every 5 feedback interactions.
-        </div>
-    </div>
-
-    <!-- Tips -->
-    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 class="font-medium text-blue-900 mb-2">
-            <i class="fas fa-lightbulb mr-1"></i>
-            Tips for Better Relevance
-        </h3>
-        <ul class="text-sm text-blue-800 space-y-1">
-            <li>• Use specific terms like "React hooks" instead of just "React"</li>
-            <li>• Include company names you're interested in: "OpenAI", "Google", "Apple"</li>
-            <li>• Add technology names: "Kubernetes", "PostgreSQL", "Python"</li>
-            <li>• Use thumbs up/down on stories to train the system</li>
-            <li>• Put your most important topics in "High Priority" for better filtering</li>
-            <li>• Start with fewer, more specific interests rather than many broad ones</li>
-        </ul>
-    </div>
 </div>
 
 <script>
-// Load learning statistics
-async function loadLearningStats() {
-    try {
-        const response = await fetch('/api/learning/stats');
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-            const stats = data.stats;
-            const statsDiv = document.getElementById('learning-stats');
-            
-            const learningEnabled = stats.learning_enabled ? '✅ Active' : '⏳ Needs more feedback';
-            const minFeedback = stats.learning_enabled ? '' : ' (need 3+ total)';
-            
-            statsDiv.innerHTML = `
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div>
-                        <div class="font-medium">Status</div>
-                        <div>${learningEnabled}</div>
-                    </div>
-                    <div>
-                        <div class="font-medium">Total Feedback</div>
-                        <div>${stats.total_feedback}${minFeedback}</div>
-                    </div>
-                    <div>
-                        <div class="font-medium">Recent (7 days)</div>
-                        <div>${stats.recent_feedback} reactions</div>
-                    </div>
-                    <div>
-                        <div class="font-medium">Weight Updates</div>
-                        <div>${stats.recent_updates} in 30 days</div>
-                    </div>
-                </div>
-            `;
-        } else {
-            document.getElementById('learning-stats').innerHTML = 
-                '<span class="text-red-600">⚠️ Error loading learning stats</span>';
-        }
-    } catch (error) {
-        console.error('Error loading learning stats:', error);
-        document.getElementById('learning-stats').innerHTML = 
-            '<span class="text-red-600">⚠️ Error loading learning stats</span>';
-    }
-}
-
-// Trigger learning cycle
-async function triggerLearning() {
-    const button = document.getElementById('learning-trigger-btn');
-    const originalContent = button.innerHTML;
-    
-    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Learning...';
-    button.disabled = true;
-    
-    try {
-        const response = await fetch('/api/learning/run', { method: 'POST' });
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-            const results = data.results;
-            
-            if (results.status === 'success') {
-                showToast(`Learning complete! Updated ${results.changes_applied} interest weights`, 'success');
-                
-                // Reload the page to show updated weights
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else if (results.status === 'no_changes') {
-                showToast('Learning ran but no weight changes needed', 'success');
-            } else {
-                showToast(results.message || 'Learning completed with no changes', 'success');
-            }
-        } else {
-            throw new Error(data.message || 'Failed to run learning');
-        }
-    } catch (error) {
-        console.error('Error running learning:', error);
-        showToast('Failed to run learning cycle', 'error');
-    } finally {
-        button.innerHTML = originalContent;
-        button.disabled = false;
-        
-        // Reload stats
-        setTimeout(() => {
-            loadLearningStats();
-        }, 1000);
-    }
-}
-
-// Load learning stats on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadLearningStats();
-});
-
-// Delete interest function
+// Delete interest function using the shared modal from base.html
 async function deleteInterest(interestId, keyword) {
-    // Use the confirmation modal from base.html
+    // Use the confirmation modal from base.html with orange styling
     const confirmed = await showConfirmModal(
-        `Are you sure you want to delete the interest "${keyword}"? This will affect how stories are filtered for relevance.`,
-        'Delete Interest',
+        `Are you sure you want to remove "${keyword}" from your interests? This will affect how stories are filtered for relevance.`,
+        'Remove Interest',
         'fa-trash',
-        'text-red-500'
+        'text-orange-500'
     );
     
     if (!confirmed) return;
@@ -296,20 +229,93 @@ async function deleteInterest(interestId, keyword) {
         const data = await response.json();
         
         if (data.status === 'deleted') {
+            // Restore quick add button for deleted topic
+            restoreQuickAddButton(keyword);
+            
             // Show success message
-            showToast(`Interest "${keyword}" deleted successfully`, 'success');
+            showToast(`Interest "${keyword}" removed successfully`, 'success');
             
             // Reload the page to update the display
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            window.location.reload();
         } else {
-            throw new Error(data.message || 'Failed to delete interest');
+            throw new Error(data.message || 'Failed to remove interest');
         }
     } catch (error) {
-        console.error('Error deleting interest:', error);
-        showToast('Failed to delete interest', 'error');
+        console.error('Error removing interest:', error);
+        showToast('Failed to remove interest', 'error');
     }
 }
+
+// Quick add topics database for dynamic management
+const quickAddTopics = {
+    'technology': ['artificial intelligence', 'machine learning', 'software development', 'robotics', 'blockchain', 'cybersecurity'],
+    'business': ['startups', 'cryptocurrency', 'venture capital', 'economics', 'fintech', 'business strategy'],
+    'science': ['climate change', 'biotechnology', 'medicine', 'space exploration', 'physics', 'psychology']
+};
+
+function quickAddInterest(keyword, category) {
+    // Hide the quick add button immediately for better UX
+    const button = document.querySelector(`button[data-topic="${keyword}"]`);
+    if (button) {
+        button.style.display = 'none';
+    }
+    
+    // Create a form and submit it
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/interests/{{ user.user_id }}/update';
+    
+    const keywordInput = document.createElement('input');
+    keywordInput.type = 'hidden';
+    keywordInput.name = 'keyword';
+    keywordInput.value = keyword;
+    
+    const categoryInput = document.createElement('input');
+    categoryInput.type = 'hidden';
+    categoryInput.name = 'category';
+    categoryInput.value = category;
+    
+    form.appendChild(keywordInput);
+    form.appendChild(categoryInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function restoreQuickAddButton(keyword) {
+    // When an interest is deleted, restore its quick add button if it's in our predefined topics
+    for (const [category, topics] of Object.entries(quickAddTopics)) {
+        if (topics.includes(keyword.toLowerCase())) {
+            const container = document.getElementById(`${category}-topics`);
+            if (container) {
+                // Check if button already exists (might be hidden)
+                let button = container.querySelector(`button[data-topic="${keyword}"]`);
+                
+                if (!button) {
+                    // Create new button
+                    button = document.createElement('button');
+                    button.onclick = () => quickAddInterest(keyword, category);
+                    button.className = getQuickAddButtonClass(category);
+                    button.setAttribute('data-topic', keyword);
+                    button.textContent = keyword;
+                    container.appendChild(button);
+                } else {
+                    // Just show the existing button
+                    button.style.display = 'inline-block';
+                }
+            }
+            break;
+        }
+    }
+}
+
+function getQuickAddButtonClass(category) {
+    const classes = {
+        'technology': 'px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition-colors',
+        'business': 'px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors',
+        'science': 'px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200 transition-colors'
+    };
+    return classes[category] || classes['technology'];
+}
 </script>
+
 {% endblock %}

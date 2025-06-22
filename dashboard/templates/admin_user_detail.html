@@ -3,7 +3,7 @@
 {% block title %}Admin - User Detail - HN Scraper{% endblock %}
 
 {% block content %}
-<div class="px-4 sm:px-0">
+<div>
     <!-- Header -->
     <div class="mb-6">
         <div class="flex items-center justify-between">
@@ -92,7 +92,7 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
-                    <i class="fas fa-bookmark text-green-500 text-xl"></i>
+                    <i class="fas fa-bookmark text-orange-500 text-xl"></i>
                 </div>
                 <div class="ml-3">
                     <p class="text-sm font-medium text-gray-500">Saved Stories</p>
@@ -166,7 +166,7 @@
                             {% if interaction_type == 'click' %}
                                 <i class="fas fa-mouse-pointer text-blue-500 mr-3"></i>
                             {% elif interaction_type == 'save' %}
-                                <i class="fas fa-bookmark text-green-500 mr-3"></i>
+                                <i class="fas fa-bookmark text-orange-500 mr-3"></i>
                             {% elif interaction_type == 'thumbs_up' %}
                                 <i class="fas fa-thumbs-up text-green-600 mr-3"></i>
                             {% elif interaction_type == 'thumbs_down' %}

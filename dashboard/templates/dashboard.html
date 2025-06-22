@@ -9,7 +9,7 @@
     // Set user ID for JavaScript API calls
     window.currentUserId = "{{ user.user_id }}";
 </script>
-<div class="px-4 sm:px-0">
+<div>
     <!-- Header with date navigation -->
     <div class="mb-6">
         <div class="flex items-center justify-between">
@@ -138,21 +138,6 @@
                             </a>
                         </div>
                     </div>
-                    <div class="ml-4 flex-shrink-0">
-                        {% if story.relevance_score >= 0.7 %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            High Relevance
-                        </span>
-                        {% elif story.relevance_score >= 0.5 %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Medium
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            Low
-                        </span>
-                        {% endif %}
-                    </div>
                 </div>
 
                 <!-- Article Summary -->
@@ -180,7 +165,10 @@
                 {% if story.comments_analysis and story.comments_analysis.total_comments_analyzed > 0 %}
                 <div class="border-t pt-4">
                     <h4 class="text-sm font-medium text-gray-700 mb-2">
-                        💬 Discussion Analysis ({{ story.comments_analysis.total_comments_analyzed }} comments)
+                        💬 Discussion Analysis 
+                        <span class="text-xs text-gray-500">
+                            (analyzed {{ story.comments_analysis.total_comments_analyzed }} of {{ story.comments_count }} comments)
+                        </span>
                     </h4>
                     
                     {% if story.comments_analysis.main_themes %}
@@ -357,7 +345,7 @@
         <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No Relevant Stories Found</h3>
         <p class="text-gray-500 mb-4">No stories matched your interests for this date.</p>
-        <a href="/interests" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
+        <a href="/interests/{{ user.user_id }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-hn-orange hover:bg-orange-600">
             <i class="fas fa-cog mr-2"></i>Adjust Interests
         </a>
     </div>
@@ -404,19 +392,9 @@
                         </div>
                         <div class="ml-4 flex-shrink-0">
                             {% if story.is_relevant %}
-                                {% if story.relevance_score >= 0.7 %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    High Relevance
-                                </span>
-                                {% elif story.relevance_score >= 0.5 %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Medium
-                                </span>
-                                {% else %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                    Low
-                                </span>
-                                {% endif %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Relevant
+                            </span>
                             {% else %}
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                                 Filtered

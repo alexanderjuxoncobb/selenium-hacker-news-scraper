@@ -13,7 +13,7 @@ from typing import List, Dict, Tuple
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dashboard'))
 
 from enhanced_scraper import EnhancedHackerNewsScraper
-from email_sender import EmailNotifier
+from email_sender import get_email_notifier
 from database import DatabaseManager, User, UserInterestWeight
 
 def get_all_users_with_interests(db: DatabaseManager) -> List[Tuple[User, List[UserInterestWeight]]]:
@@ -29,34 +29,75 @@ def get_all_users_with_interests(db: DatabaseManager) -> List[Tuple[User, List[U
     return users_with_interests
 
 def store_multi_user_results(db: DatabaseManager, overall_summary: Dict):
-    """Store processed stories in database for all users"""
+    """Store processed stories in database with user-specific relevance data"""
     print("💾 Storing processed stories in database...")
     
-    # Import stories to database (they're shared across users)
     scrape_date = overall_summary.get('scrape_date', datetime.now().isoformat())[:10]
     
-    # Extract stories from first user's data (they're the same across users)
     if overall_summary.get('users_digest_data'):
+        # First, import stories without relevance data (shared across users)
         first_user_data = overall_summary['users_digest_data'][0]['digest_data']
         stories = first_user_data.get('stories', [])
         
-        # Create a mock JSON structure for import
+        # Create stories-only JSON structure for import
+        stories_only = []
+        for story in stories:
+            story_copy = story.copy()
+            # Remove user-specific relevance fields before storing shared story data
+            story_copy.pop('is_relevant', None)
+            story_copy.pop('relevance_score', None)
+            story_copy.pop('relevance_reasoning', None)
+            stories_only.append(story_copy)
+        
         mock_json_data = {
             "scrape_date": scrape_date,
-            "stories": stories
+            "stories": stories_only
         }
         
-        # Save to temporary JSON and import
+        # Save and import stories
         import json
         temp_filename = f"temp_multi_user_import_{scrape_date}.json"
         with open(temp_filename, 'w', encoding='utf-8') as f:
             json.dump(mock_json_data, f, indent=2, ensure_ascii=False)
         
         db.import_json_data(temp_filename)
+        print(f"✅ Imported {len(stories_only)} stories for date {scrape_date}")
+        
+        # Now store user-specific relevance data for each user
+        print("💾 Storing user-specific relevance data...")
+        for user_data in overall_summary['users_digest_data']:
+            user_id = user_data['user']['user_id']
+            user_name = user_data['user']['name'] or user_data['user']['email']
+            # Get the user's specific stories WITH relevance data from their digest
+            user_stories = user_data['digest_data']['stories']
+            
+            relevance_count = 0
+            for story in user_stories:
+                if 'is_relevant' in story:  # Store both relevant and non-relevant
+                    # Find the story in database by rank and date
+                    all_stories = db.get_stories_by_date(scrape_date)
+                    matching_story = None
+                    for db_story in all_stories:
+                        if db_story.rank == story.get('rank') and db_story.title == story.get('title'):
+                            matching_story = db_story
+                            break
+                    
+                    if matching_story:
+                        db.store_user_story_relevance(
+                            user_id=user_id,
+                            story_db_id=matching_story.id,
+                            is_relevant=story.get('is_relevant', False),
+                            relevance_score=story.get('relevance_score', 0.0),
+                            relevance_reasoning=story.get('relevance_reasoning')
+                        )
+                        relevance_count += 1
+                    else:
+                        print(f"    ⚠️ Could not find matching story in DB: rank={story.get('rank')}, title={story.get('title')[:50]}...")
+            
+            print(f"  ✅ Stored {relevance_count} relevance entries for {user_name}")
         
         # Clean up temp file
         os.remove(temp_filename)
-        print(f"✅ Imported {len(stories)} stories for date {scrape_date}")
 
 def main():
     """Main function for multi-user scraping and email sending"""
@@ -68,7 +109,7 @@ def main():
         print("🔧 Initializing components...")
         db = DatabaseManager()
         scraper = EnhancedHackerNewsScraper()
-        email_notifier = EmailNotifier()
+        email_notifier = get_email_notifier()
         
         # Get all users and their interests
         print("\n👥 Loading users and interests...")

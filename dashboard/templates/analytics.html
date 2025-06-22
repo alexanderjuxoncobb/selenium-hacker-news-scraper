@@ -5,7 +5,7 @@
 {% block nav_analytics %}text-gray-900{% endblock %}
 
 {% block content %}
-<div class="px-4 sm:px-0">
+<div>
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">
             📊 Analytics & Trends
@@ -166,7 +166,7 @@
                     {% for day_stats in daily_stats[-10:] %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <a href="/dashboard/{{ day_stats.date }}" class="text-hn-orange hover:underline">
+                            <a href="/dashboard/{{ user.user_id }}/{{ day_stats.date }}" class="text-hn-orange hover:underline">
                                 {{ day_stats.date }}
                             </a>
                         </td>

@@ -80,60 +80,129 @@ async def home(request: Request):
 @app.get("/setup", response_class=HTMLResponse)
 async def setup_form(request: Request):
     """User setup form"""
-    # Default interests structure
-    default_interests = {
-        "high_priority": [
-            "artificial intelligence", "AI", "machine learning", "ML", "AI agents",
-            "tech startups", "software development", "programming", "mathematics",
-            "statistics", "behavioral economics", "behavioral finance"
+    # Organized core topics
+    topic_sections = {
+        "Technology & Programming": [
+            "artificial intelligence", "machine learning", "software development", 
+            "programming", "hardware", "robotics"
         ],
-        "medium_priority": [
-            "robotics", "hardware", "politics", "Trump", "UK", "Europe", "United Kingdom",
-            "health", "wellness", "running", "books", "reading"
+        "Business & Finance": [
+            "startups", "business", "finance", "cryptocurrency"
         ],
-        "low_priority": [
-            "music"
+        "Science & Health": [
+            "science", "health", "medicine", "climate"
+        ],
+        "General Interest": [
+            "politics", "education", "books", "music"
         ]
     }
     
     return templates.TemplateResponse("setup.html", {
         "request": request,
-        "default_interests": default_interests
+        "topic_sections": topic_sections
     })
 
 @app.post("/setup", response_class=HTMLResponse)
-async def setup_submit(
-    request: Request,
-    email: str = Form(...),
-    name: Optional[str] = Form(None),
-    high_interests: list = Form([]),
-    medium_interests: list = Form([]),
-    low_interests: list = Form([]),
-    custom_interests: Optional[str] = Form(None),
-    email_time: str = Form("08:30")
-):
+async def setup_submit(request: Request):
     """Process user setup form"""
     try:
+        # Get form data
+        form_data = await request.form()
+        email = form_data.get("email")
+        name = form_data.get("name")
+        custom_interests = form_data.get("custom_interests")
+        
+        if not email:
+            raise ValueError("Email is required")
+        
         # Create user
         user_id = db.create_user(email, name)
         
-        # Add selected interests
-        weight_mapping = {"high": 1.0, "medium": 0.6, "low": 0.3}
+        # Don't copy defaults - users only get interests they explicitly select
         
-        for keyword in high_interests:
-            db.update_user_interest_weight(user_id, keyword, weight_mapping["high"], "high")
+        # Topic category mapping for organization
+        topic_to_category = {
+            # Technology & Programming
+            "artificial intelligence": "technology", "machine learning": "technology", 
+            "software development": "technology", "programming": "technology", 
+            "hardware": "technology", "robotics": "technology",
+            
+            # Business & Finance  
+            "startups": "business", "business": "business", 
+            "finance": "business", "cryptocurrency": "business",
+            
+            # Science & Health
+            "science": "science", "health": "science", 
+            "medicine": "science", "climate": "science",
+            
+            # General Interest
+            "politics": "general", "education": "general", 
+            "books": "general", "music": "general"
+        }
         
-        for keyword in medium_interests:
-            db.update_user_interest_weight(user_id, keyword, weight_mapping["medium"], "medium")
+        # All available topics from sections
+        topic_sections = {
+            "Technology & Programming": [
+                "artificial intelligence", "machine learning", "software development", 
+                "programming", "hardware", "robotics"
+            ],
+            "Business & Finance": [
+                "startups", "business", "finance", "cryptocurrency"
+            ],
+            "Science & Health": [
+                "science", "health", "medicine", "climate"
+            ],
+            "General Interest": [
+                "politics", "education", "books", "music"
+            ]
+        }
         
-        for keyword in low_interests:
-            db.update_user_interest_weight(user_id, keyword, weight_mapping["low"], "low")
+        all_topics = []
+        for topics in topic_sections.values():
+            all_topics.extend(topics)
         
-        # Add custom interests (default to medium priority)
-        if custom_interests:
-            custom_keywords = [k.strip() for k in custom_interests.split(",") if k.strip()]
-            for keyword in custom_keywords:
-                db.update_user_interest_weight(user_id, keyword, weight_mapping["medium"], "medium")
+        # Acronym mapping for content matching
+        acronym_mapping = {
+            "artificial intelligence": ["AI"],
+            "machine learning": ["ML"],
+            "startups": ["tech startups"]
+        }
+        
+        interests_added = 0
+        # Process checkbox selections (simple interested/not interested)
+        for topic in all_topics:
+            is_interested = form_data.get(f"topic_{topic}")
+            print(f"🔍 Topic: {topic}, Selected: {bool(is_interested)}")
+            if is_interested:  # Checkbox was checked
+                category = topic_to_category.get(topic, "general")
+                # Always use weight 1.0 for all interests
+                db.update_user_interest_weight(user_id, topic, 1.0, category)
+                interests_added += 1
+                print(f"✅ Added interest: {topic} (category: {category})")
+                
+                # Add acronyms/related terms for better content matching
+                if topic in acronym_mapping:
+                    for related_term in acronym_mapping[topic]:
+                        db.update_user_interest_weight(user_id, related_term, 1.0, category)
+                        interests_added += 1
+                        print(f"✅ Added related term: {related_term} (category: {category})")
+        
+        print(f"📊 Total interests added: {interests_added}")
+        
+        # Add custom interests (no priority format, just keywords)
+        for key, value in form_data.items():
+            if key.startswith("custom_interest_"):
+                keyword = value.strip()
+                if keyword:
+                    # Assign custom interests to general category by default
+                    db.update_user_interest_weight(user_id, keyword, 1.0, "general")
+                    print(f"✅ Added custom interest: {keyword} (category: general)")
+        
+        # Process only today's stories for the new user (signup date)
+        print(f"🔄 Processing today's stories for new user {user_id}...")
+        processing_stats = db.batch_process_user_relevance_from_date(user_id, date.today().isoformat())
+        print(f"✅ Processed {processing_stats['processed_stories']} stories, found {processing_stats['relevant_stories']} relevant")
+        print(f"📊 Processing stats: {processing_stats}")
         
         # Get user and interest count for success page
         user = db.get_user(user_id)
@@ -142,7 +211,8 @@ async def setup_submit(
         return templates.TemplateResponse("setup_success.html", {
             "request": request,
             "user": user,
-            "interest_count": len(user_interests)
+            "interest_count": len(user_interests),
+            "processing_stats": processing_stats
         })
         
     except Exception as e:
@@ -150,24 +220,25 @@ async def setup_submit(
         error = "Something went wrong during setup. Please try again."
         
         # Return form with error
-        default_interests = {
-            "high_priority": [
-                "artificial intelligence", "AI", "machine learning", "ML", "AI agents",
-                "tech startups", "software development", "programming", "mathematics",
-                "statistics", "behavioral economics", "behavioral finance"
+        topic_sections = {
+            "Technology & Programming": [
+                "artificial intelligence", "machine learning", "software development", 
+                "programming", "hardware", "robotics"
             ],
-            "medium_priority": [
-                "robotics", "hardware", "politics", "Trump", "UK", "Europe", "United Kingdom",
-                "health", "wellness", "running", "books", "reading"
+            "Business & Finance": [
+                "startups", "business", "finance", "cryptocurrency"
             ],
-            "low_priority": [
-                "music"
+            "Science & Health": [
+                "science", "health", "medicine", "climate"
+            ],
+            "General Interest": [
+                "politics", "education", "books", "music"
             ]
         }
         
         return templates.TemplateResponse("setup.html", {
             "request": request,
-            "default_interests": default_interests,
+            "topic_sections": topic_sections,
             "error": error
         })
 
@@ -182,14 +253,13 @@ async def user_dashboard(request: Request, user_id: str):
     # Update user activity
     db.update_user_activity(user_id)
     
-    available_dates = db.get_available_dates()
+    available_dates = db.get_available_dates_for_user(user_id)
     if not available_dates:
-        return templates.TemplateResponse("no_data.html", {
-            "request": request,
-            "user": user
-        })
+        # No data available for this user yet (maybe they just signed up)
+        # Redirect to today's date anyway, which will show no data message
+        return RedirectResponse(url=f"/dashboard/{user_id}/{date.today().isoformat()}")
     
-    # Try to find today's data, otherwise use latest
+    # Try to find today's data, otherwise use latest available for user
     today = date.today().isoformat()
     target_date = today if today in available_dates else available_dates[0]
     
@@ -212,15 +282,58 @@ async def user_dashboard_date(request: Request, user_id: str, target_date: str):
     # Update user activity
     db.update_user_activity(user_id)
     
-    # Get stories and filter by user interests
-    all_stories = db.get_stories_by_date(target_date)
+    # Get stories with user-specific relevance data
+    stories_with_relevance = db.get_stories_with_user_relevance(user_id, target_date)
+    
+    # Check if we need to process relevance on-demand
+    needs_processing = False
+    for story, relevance in stories_with_relevance:
+        if not relevance:
+            needs_processing = True
+            break
+    
+    # If no relevance data exists and user has interests, process on-demand
+    if needs_processing:
+        user_interests = db.get_user_interests_by_category(user_id)
+        if any(user_interests.values()):
+            print(f"📊 Processing relevance on-demand for user {user_id} on {target_date}")
+            # Process just this date's stories
+            target_datetime = datetime.strptime(target_date, "%Y-%m-%d")
+            days_ago = (datetime.now() - target_datetime).days
+            if days_ago <= 30:  # Only process if within last 30 days
+                print(f"⚠️  Re-processing relevance for {target_date} (days_ago: {days_ago})")
+                db.batch_process_user_relevance(user_id, limit_days=days_ago + 1)
+                # Re-fetch stories with newly calculated relevance
+                stories_with_relevance = db.get_stories_with_user_relevance(user_id, target_date)
+    
+    # Separate stories and extract relevant ones
+    all_stories = []
+    relevant_stories = []
+    
+    for story, relevance in stories_with_relevance:
+        # Add relevance data to story for template access
+        if relevance:
+            story.is_relevant = relevance.is_relevant
+            story.relevance_score = float(relevance.relevance_score) if relevance.relevance_score is not None else 0.0
+            story.relevance_reasoning = relevance.relevance_reasoning
+            if relevance.is_relevant:
+                relevant_stories.append(story)
+                print(f"✅ Story {story.id} marked as RELEVANT (score: {story.relevance_score})")
+            else:
+                print(f"❌ Story {story.id} marked as NOT RELEVANT (score: {story.relevance_score})")
+        else:
+            # No relevance data for this user yet
+            story.is_relevant = False
+            story.relevance_score = 0.0
+            story.relevance_reasoning = None
+            print(f"⚠️  Story {story.id} has NO relevance data")
+        
+        all_stories.append(story)
+    
     user_interests = db.get_user_interest_weights(user_id)
     
-    # Use user-specific relevance filtering
-    relevant_stories = db.get_user_relevant_stories_by_date(user_id, target_date)
-    
     stats = db.get_stats_by_date(target_date)
-    available_dates = db.get_available_dates()
+    available_dates = db.get_available_dates_for_user(user_id)
     
     if not all_stories:
         return templates.TemplateResponse("no_data.html", {
@@ -234,6 +347,10 @@ async def user_dashboard_date(request: Request, user_id: str, target_date: str):
     current_index = available_dates.index(target_date) if target_date in available_dates else 0
     prev_date = available_dates[current_index + 1] if current_index + 1 < len(available_dates) else None
     next_date = available_dates[current_index - 1] if current_index > 0 else None
+    
+    # Override the relevant_stories count in stats with the actual user-specific count
+    stats['relevant_stories'] = len(relevant_stories)
+    print(f"📊 Dashboard stats for {user_id} on {target_date}: {len(relevant_stories)} relevant out of {len(all_stories)} total")
     
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -273,8 +390,6 @@ async def api_stories(target_date: str):
                 "comments_count": s.comments_count,
                 "hn_discussion_url": s.hn_discussion_url,
                 "article_summary": s.article_summary,
-                "is_relevant": s.is_relevant,
-                "relevance_score": s.relevance_score,
                 "comments_analysis": s.comments_analysis
             }
             for s in stories
@@ -425,21 +540,14 @@ async def update_interests(
     keyword: str = Form(...),
     category: str = Form(...)
 ):
-    """Add new interest for a specific user with automatic weight based on category"""
+    """Add new interest for a specific user with single weight (1.0)"""
     # Verify user exists
     user = db.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Auto-assign weight based on category
-    weight_mapping = {
-        "high": 1.0,
-        "medium": 0.6,
-        "low": 0.3
-    }
-    weight = weight_mapping.get(category, 0.6)  # Default to medium if invalid category
-    
-    db.update_user_interest_weight(user_id, keyword, weight, category)
+    # Always use weight 1.0 for all interests
+    db.update_user_interest_weight(user_id, keyword, 1.0, category)
     return RedirectResponse(url=f"/interests/{user_id}", status_code=303)
 
 @app.delete("/api/interests/{user_id}/{interest_id}")
@@ -608,10 +716,14 @@ async def admin_user_detail(request: Request, user_id: str, admin: str = Depends
         available_dates = db.get_available_dates()[:3]
         recent_relevant_stories = []
         for date in available_dates:
-            date_stories = db.get_user_relevant_stories_by_date(user_id, date)
-            # Filter out stories with 0.00 relevance scores (fallback global stories)
-            filtered_stories = [story for story in date_stories if story.relevance_score > 0.0]
-            recent_relevant_stories.extend(filtered_stories[:5])  # Top 5 per day
+            stories_with_relevance = db.get_stories_with_user_relevance(user_id, date)
+            # Filter for relevant stories only
+            relevant_stories = []
+            for story, relevance in stories_with_relevance:
+                if relevance and relevance.is_relevant and relevance.relevance_score > 0.0:
+                    story.relevance_score = relevance.relevance_score  # Add for template access
+                    relevant_stories.append(story)
+            recent_relevant_stories.extend(relevant_stories[:5])  # Top 5 per day
         
         # Calculate engagement metrics
         total_interactions = sum(stat['count'] for stat in interaction_stats.values())
@@ -681,6 +793,21 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
         avg_interactions_per_user = total_interactions_all / len(all_users) if all_users else 0
         user_activity_rate = (active_users_count / len(all_users)) * 100 if all_users else 0
         
+        # Get cost optimization data from latest multi-user summary
+        cost_optimization_data = None
+        try:
+            import glob
+            import json
+            # Find the latest multi_user_summary file in parent directory
+            summary_files = glob.glob("../multi_user_summary_*.json")
+            if summary_files:
+                latest_summary_file = max(summary_files)
+                with open(latest_summary_file, 'r') as f:
+                    summary_data = json.load(f)
+                    cost_optimization_data = summary_data.get('cost_optimization', {})
+        except Exception as e:
+            print(f"Could not load cost optimization data: {e}")
+        
         return templates.TemplateResponse("admin_analytics.html", {
             "request": request,
             "total_users": len(all_users),
@@ -689,7 +816,8 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
             "avg_interactions_per_user": avg_interactions_per_user,
             "user_engagement": user_engagement[:10],  # Top 10
             "recent_stats": recent_stats,
-            "available_dates": available_dates
+            "available_dates": available_dates,
+            "cost_optimization": cost_optimization_data
         })
         
     except Exception as e:

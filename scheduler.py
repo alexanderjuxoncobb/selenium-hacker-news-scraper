@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Daily Scheduler for Hacker News Scraper
-Runs the scraper at 8:30 AM London time every day
+Runs the multi-user scraper at 8:30 AM London time every day
+Processes stories for all registered users and sends personalized email digests
 """
 
 import schedule
@@ -19,14 +20,14 @@ def run_daily_scraper():
     print(f"🕰️  Starting daily scraper job at {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     
     try:
-        # Run the scraper
-        result = subprocess.run(['python', 'scraper.py'], 
+        # Run the multi-user scraper to process and send emails to all users
+        result = subprocess.run(['python', 'multi_user_scraper.py'], 
                               capture_output=True, 
                               text=True, 
                               cwd=os.path.dirname(os.path.abspath(__file__)))
         
         if result.returncode == 0:
-            print("✅ Daily scraping completed successfully!")
+            print("✅ Daily scraping and email sending completed successfully!")
             print("📊 Scraper output:")
             print(result.stdout)
         else:
