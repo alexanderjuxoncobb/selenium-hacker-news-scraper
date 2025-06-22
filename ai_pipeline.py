@@ -63,7 +63,8 @@ class CostOptimizedAI:
             interest_weights = db.get_interest_weights()
             
             if not interest_weights:
-                print("⚠️ No interests found in database, using defaults")
+                print("⚠️ No global interests found in database, using defaults")
+                print("   (User-specific interests may still be provided during filtering)")
                 return self._get_default_interests()
             
             # Group interests by category
@@ -176,7 +177,11 @@ class CostOptimizedAI:
         interests_to_use = self.interest_embeddings
         if user_interests:
             # Recompute embeddings for user-specific interests
+            print(f"🔍 Using user-specific interests: {user_interests}")
             interests_to_use = self._compute_user_interest_embeddings(user_interests)
+            print(f"✅ Computed embeddings for {len(interests_to_use)} categories")
+        else:
+            print(f"⚠️ Using default interests (no user interests provided)")
         
         # Compare against all interest categories
         for category, data in interests_to_use.items():
@@ -193,7 +198,7 @@ class CostOptimizedAI:
                 best_category = category
         
         # Threshold for relevance (tunable)
-        relevance_threshold = 0.35  # Lowered threshold for broader matching
+        relevance_threshold = 0.25  # More permissive threshold for technical content
         is_relevant = max_similarity > relevance_threshold
         
         reasoning = f"Best match: '{best_match}' ({best_category}) - similarity: {max_similarity:.3f}"
@@ -330,6 +335,8 @@ class CostOptimizedAI:
             - Mention specific tools, technologies, companies, or people by name
             - Highlight concrete examples or use cases
             - Focus on actionable insights or specific claims
+            - CRITICAL: If the article mentions any of these key terms, you MUST include them exactly in your summary: "artificial intelligence", "AI", "machine learning", "ML", "programming", "software development", "tech startups", "startup", "robotics", "hardware", "mathematics", "statistics", "behavioral economics", "behavioral finance"
+            - Preserve exact technical terminology and acronyms (e.g., "API" not "api", "PostgreSQL" not "postgres")
             - 3-4 sentences maximum but pack them with specifics
 
             Article content:
@@ -602,6 +609,8 @@ class CostOptimizedAI:
                         summary_prompt = f"""
                         Summarize this top Hacker News comment in 1-2 concise sentences. Focus on the key point or insight the commenter is making.
                         
+                        IMPORTANT: If the comment mentions any of these key terms, you MUST include them exactly in your summary: "artificial intelligence", "AI", "machine learning", "ML", "programming", "software development", "tech startups", "startup", "robotics", "hardware", "mathematics", "statistics", "behavioral economics", "behavioral finance". Preserve exact technical terminology and acronyms.
+                        
                         Comment by {top_comment['author']}:
                         {top_comment['text'][:500]}
                         
@@ -694,7 +703,7 @@ class CostOptimizedAI:
         interest_embeddings = {}
         
         # Handle both dict format and database object format
-        if isinstance(list(user_interests.values())[0], list):
+        if isinstance(user_interests, dict) and user_interests and isinstance(list(user_interests.values())[0], list):
             # Dictionary format from form data
             weight_mapping = {
                 "high_priority": 1.0,

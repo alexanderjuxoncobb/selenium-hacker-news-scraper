@@ -288,6 +288,8 @@ class HackerNewsScraper:
             - Mention specific tools, technologies, companies, or people by name
             - Highlight concrete examples or use cases
             - Focus on actionable insights or specific claims
+            - CRITICAL: If the article mentions any of these key terms, you MUST include them exactly in your summary: "artificial intelligence", "AI", "machine learning", "ML", "programming", "software development", "tech startups", "startup", "robotics", "hardware", "mathematics", "statistics", "behavioral economics", "behavioral finance"
+            - Preserve exact technical terminology and acronyms (e.g., "API" not "api", "PostgreSQL" not "postgres")
             - 3-4 sentences maximum but pack them with specifics
 
             Article content:
@@ -463,6 +465,10 @@ class HackerNewsScraper:
             prompt = f"""
             Analyze these Hacker News comments with specific details and quotes. You MUST respond with valid JSON only.
 
+            IMPORTANT: You are analyzing ONLY THE TOP {len(top_comments)} COMMENTS from a larger discussion. 
+            Do NOT mention the specific number of comments in your sentiment_summary.
+            Focus on the content and themes, not the quantity.
+
             COMMENTS:
             {all_comments}
 
@@ -470,14 +476,14 @@ class HackerNewsScraper:
             - main_themes: Specific topics discussed (include tools, technologies, companies mentioned)
             - agreement_points: What people specifically agree with (include short quotes in "quotes")
             - disagreement_points: Specific criticisms or counter-arguments (include short quotes)
-            - sentiment_summary: Concrete description with specific examples of what people are saying
+            - sentiment_summary: Concrete description of the discussion themes and viewpoints WITHOUT mentioning comment count
 
             Respond with only this JSON structure (no other text):
             {{
                 "main_themes": ["Specific topic 1 (e.g., 'Performance issues with React hooks')", "Specific topic 2"],
                 "agreement_points": ["'Quote showing agreement' - specific point they agree with", "Another specific agreement"],
                 "disagreement_points": ["'Quote showing disagreement' - specific criticism", "Another specific counter-argument"],
-                "sentiment_summary": "Specific description mentioning what people actually said, tools mentioned, or concrete concerns raised"
+                "sentiment_summary": "Description of the main discussion points, concerns, and viewpoints (do NOT mention number of comments)"
             }}
             """
             
