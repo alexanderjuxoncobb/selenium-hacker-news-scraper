@@ -660,11 +660,12 @@ class DatabaseManager:
         """Get statistics for a specific date, matching what's displayed on the dashboard"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            
+            # Get basic story stats
             cursor.execute("""
                 SELECT 
                     COUNT(*) as total_scraped,
                     SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
-                    SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories,
                     AVG(points) as avg_points,
                     SUM(comments_count) as total_comments,
                     SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
@@ -673,13 +674,72 @@ class DatabaseManager:
             """, (target_date,))
             
             row = cursor.fetchone()
+            
+            # For multi-user system, calculate relevant stories across all users
+            # Count unique stories that are relevant to at least one user
+            cursor.execute("""
+                SELECT COUNT(DISTINCT usr.story_id) as relevant_stories
+                FROM user_story_relevance usr
+                JOIN stories s ON usr.story_id = s.id
+                WHERE s.date = ? AND usr.is_relevant = 1
+            """, (target_date,))
+            
+            relevant_count = cursor.fetchone()[0] or 0
+            
+            # If no user-specific relevance data, fall back to legacy is_relevant column
+            if relevant_count == 0:
+                cursor.execute("""
+                    SELECT SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories
+                    FROM stories 
+                    WHERE date = ?
+                """, (target_date,))
+                relevant_count = cursor.fetchone()[0] or 0
+            
             return {
                 'total_stories': row[1] or 0,  # Non-cached stories only
                 'total_scraped': row[0] or 0,  # All scraped stories
-                'relevant_stories': row[2] or 0,
-                'avg_points': round(row[3] or 0, 1),
-                'total_comments': row[4] or 0,
-                'cached_stories': row[5] or 0
+                'relevant_stories': relevant_count,
+                'avg_points': round(row[2] or 0, 1),
+                'total_comments': row[3] or 0,
+                'cached_stories': row[4] or 0
+            }
+    
+    def get_user_stats_by_date(self, user_id: str, target_date: str) -> Dict:
+        """Get user-specific statistics for a date"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Get basic story stats
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_scraped,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
+                    AVG(points) as avg_points,
+                    SUM(comments_count) as total_comments,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
+                FROM stories 
+                WHERE date = ?
+            """, (target_date,))
+            
+            row = cursor.fetchone()
+            
+            # Get user-specific relevant stories count
+            cursor.execute("""
+                SELECT COUNT(*) as relevant_stories
+                FROM user_story_relevance usr
+                JOIN stories s ON usr.story_id = s.id
+                WHERE s.date = ? AND usr.user_id = ? AND usr.is_relevant = 1
+            """, (target_date, user_id))
+            
+            relevant_count = cursor.fetchone()[0] or 0
+            
+            return {
+                'total_stories': row[1] or 0,  # Non-cached stories only
+                'total_scraped': row[0] or 0,  # All scraped stories
+                'relevant_stories': relevant_count,
+                'avg_points': round(row[2] or 0, 1),
+                'total_comments': row[3] or 0,
+                'cached_stories': row[4] or 0
             }
     
     def create_user(self, email: str, name: Optional[str] = None) -> str:

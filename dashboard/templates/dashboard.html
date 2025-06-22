@@ -34,7 +34,7 @@
                 </a>
                 {% endif %}
                 
-                <select onchange="window.location.href='/dashboard/{{ user.user_id }}/' + this.value" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-hn-orange focus:border-hn-orange">
+                <select onchange="window.location.href='/dashboard/{{ user.user_id }}/' + this.value" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange">
                     {% for date in available_dates %}
                     <option value="{{ date }}" {% if date == target_date %}selected{% endif %}>
                         {{ date }}

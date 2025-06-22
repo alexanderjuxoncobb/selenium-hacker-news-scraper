@@ -196,9 +196,9 @@
                         
                         // Show appropriate message
                         const messages = {
-                            'thumbs_up': { message: 'Relevance feedback removed', type: 'success' },
-                            'thumbs_down': { message: 'Relevance feedback removed', type: 'success' },
-                            'save': { message: 'Story unsaved', type: 'success' }
+                            'thumbs_up': { message: 'Relevance feedback removed', type: 'relevant' },
+                            'thumbs_down': { message: 'Relevance feedback removed', type: 'not_relevant' },
+                            'save': { message: 'Story unsaved', type: 'save' }
                         };
                         const toastConfig = messages[interactionType] || { message: 'Action removed!', type: 'success' };
                         showToast(toastConfig.message, toastConfig.type);
@@ -244,9 +244,9 @@
                     
                     // Show success message
                     const messages = {
-                        'thumbs_up': { message: 'Marked as relevant! 👍', type: 'relevant' },
-                        'thumbs_down': { message: 'Marked as not relevant 👎', type: 'not_relevant' },
-                        'save': { message: 'Story saved! 📑', type: 'save' }
+                        'thumbs_up': { message: 'Marked as relevant!', type: 'relevant' },
+                        'thumbs_down': { message: 'Marked as not relevant', type: 'not_relevant' },
+                        'save': { message: 'Story saved!', type: 'save' }
                     };
                     const toastConfig = messages[interactionType] || { message: 'Action completed!', type: 'success' };
                     showToast(toastConfig.message, toastConfig.type);

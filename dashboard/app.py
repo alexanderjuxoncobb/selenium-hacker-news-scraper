@@ -332,7 +332,7 @@ async def user_dashboard_date(request: Request, user_id: str, target_date: str):
     
     user_interests = db.get_user_interest_weights(user_id)
     
-    stats = db.get_stats_by_date(target_date)
+    stats = db.get_user_stats_by_date(user_id, target_date)
     available_dates = db.get_available_dates_for_user(user_id)
     
     if not all_stories:
@@ -599,12 +599,13 @@ async def analytics_page(request: Request, user_id: str):
     user = db.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    available_dates = db.get_available_dates()
+    # Get available dates for this user (from signup date onwards)
+    available_dates = db.get_available_dates_for_user(user_id)
     
-    # Get stats for each date
+    # Get user-specific stats for each date
     daily_stats = []
-    for date_str in available_dates[-30:]:  # Last 30 days
-        stats = db.get_stats_by_date(date_str)
+    for date_str in available_dates[-30:]:  # Last 30 days from signup
+        stats = db.get_user_stats_by_date(user_id, date_str)
         stats['date'] = date_str
         daily_stats.append(stats)
     
