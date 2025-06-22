@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup Your HN Digest - AI-Powered Hacker News Scraper</title>
+    <title>Welcome - HN Scraper Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -19,145 +19,386 @@
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <div class="bg-white border-b">
-        <div class="max-w-7xl mx-auto px-4 py-8">
-            <h1 class="text-4xl font-bold text-center mb-4 text-gray-900">
-                <i class="fas fa-robot text-hn-orange mr-3"></i>Setup Your Personal HN Digest
-            </h1>
-            <p class="text-xl text-center text-gray-600 max-w-2xl mx-auto">
-                Get AI-powered, personalized Hacker News summaries delivered to your inbox daily
-            </p>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold text-hn-orange">
+                            <i class="fas fa-robot mr-2"></i>
+                            HN Scraper
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="hidden lg:block text-sm text-gray-500">
+                        <i class="fas fa-clock mr-1"></i>
+                        Updated daily at 8:30 AM London time
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
+            <div class="text-center">
+                <div class="mb-6">
+                    <i class="fas fa-newspaper text-hn-orange text-6xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                    Never Miss a Relevant HN Story
+                </h1>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                    AI-powered personalized Hacker News digests delivered to your inbox daily. 
+                    Our smart filtering ensures you only see stories that matter to you.
+                </p>
+                <div class="flex justify-center space-x-4">
+                    <a href="#setup-form" class="bg-hn-orange text-white px-6 py-3 rounded-md font-medium hover:bg-orange-600 inline-flex items-center">
+                        <i class="fas fa-rocket mr-2"></i>
+                        Get Started Free
+                    </a>
+                    <a href="#learn-more" class="bg-white text-gray-700 px-6 py-3 rounded-md font-medium border border-gray-300 hover:bg-gray-50 inline-flex items-center">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Learn More
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Setup Form -->
-    <div class="max-w-7xl mx-auto px-4 py-12">
-        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="p-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Let's get you set up!</h2>
-                
-                {% if error %}
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                    {{ error }}
+    <!-- Problem/Solution Section -->
+    <div class="py-16 bg-gray-50" id="learn-more">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">The Problem with Hacker News</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                <div class="text-center">
+                    <div class="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i class="fas fa-clock text-gray-400 text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Too Time-Consuming</h3>
+                    <p class="text-sm text-gray-600">Scrolling through 30+ stories daily takes 15-30 minutes</p>
                 </div>
-                {% endif %}
-
-                <form method="POST" action="/setup" class="space-y-6" id="setupForm">
-                    <!-- Email -->
-                    <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                            Email Address *
-                        </label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            required 
-                            value=""
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
-                            placeholder="you@example.com"
-                        >
-                        <p class="text-sm text-gray-500 mt-1">We'll send your daily digest to this email</p>
+                <div class="text-center">
+                    <div class="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i class="fas fa-filter text-gray-400 text-2xl"></i>
                     </div>
-
-                    <!-- Name (Optional) -->
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Name (Optional)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="name" 
-                            name="name" 
-                            value=""
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
-                            placeholder="Your name"
-                        >
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Not Personalized</h3>
+                    <p class="text-sm text-gray-600">Most stories aren't relevant to your specific interests</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <i class="fas fa-sync-alt text-gray-400 text-2xl"></i>
                     </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Inconsistent Checking</h3>
+                    <p class="text-sm text-gray-600">Easy to forget to check and miss important stories</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Interest Selection -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-4">
-                            Select Your Topics of Interest
-                        </label>
-                        <p class="text-sm text-gray-600 mb-4">
-                            Check the topics you want to see stories about in your personalized digest.
-                        </p>
-                        
-                        <div class="space-y-6">
-                            {% for section_name, topics in topic_sections.items() %}
+    <!-- How It Works Section -->
+    <div class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
+                <p class="text-lg text-gray-600">Our AI-powered system does the heavy lifting so you get only what matters</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <div class="bg-hn-orange rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-spider text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900">Daily Scraping</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 text-center">We automatically scrape all top HN stories every morning</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <div class="bg-hn-orange rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-brain text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900">AI Analysis</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 text-center">Our AI analyzes content and matches it to your interests</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <div class="bg-hn-orange rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-lightbulb text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900">Smart Summaries</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 text-center">Get key insights and actionable takeaways, not just headlines</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <div class="bg-hn-orange rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-envelope text-white text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900">Email Delivery</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 text-center">Personalized digest delivered to your inbox with dashboard link</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Benefits Section -->
+    <div class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Key Benefits</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-bolt text-hn-orange text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Save 80% of Your Time</h3>
+                            <p class="text-sm text-gray-600">Instead of scrolling through 30 stories, get 3-5 perfectly relevant ones. Turn 30 minutes into 5 minutes of focused reading.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-target text-hn-orange text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Perfectly Personalized</h3>
+                            <p class="text-sm text-gray-600">Set your interests once and our AI learns from your interactions. The more you use it, the better it gets.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-mobile-alt text-hn-orange text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Mobile-First Dashboard</h3>
+                            <p class="text-sm text-gray-600">Beautiful web dashboard that works perfectly on phone, tablet, or desktop. Access your digest anywhere.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-piggy-bank text-hn-orange text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">75% Lower AI Costs</h3>
+                            <p class="text-sm text-gray-600">Our optimized pipeline uses local embeddings + selective OpenAI refinement, reducing costs while maintaining quality.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Form Section -->
+    <div class="py-16 bg-white" id="setup-form">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to Transform Your HN Experience?</h2>
+                    <p class="text-lg text-gray-600">Join others who've already saved hours while staying on top of the most relevant tech stories.</p>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="bg-hn-orange text-white p-6">
+                        <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">{{ section_name }}</h4>
-                                <div class="space-y-2">
-                                    {% for keyword in topics %}
-                                    <div class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                        <label class="flex items-center cursor-pointer flex-1">
-                                            <input 
-                                                type="checkbox" 
-                                                name="topic_{{ keyword }}" 
-                                                value="interested" 
-                                                class="h-4 w-4 text-hn-orange focus:ring-hn-orange border-gray-300 rounded"
-                                            >
-                                            <span class="ml-3 text-sm font-medium text-gray-700">{{ keyword }}</span>
-                                        </label>
+                                <h3 class="text-xl font-semibold">🚀 Set Up Your Personal Digest</h3>
+                                <p class="text-orange-100 text-sm mt-1">Free to use • No spam • Cancel anytime</p>
+                            </div>
+                            <div class="hidden sm:block">
+                                <i class="fas fa-chart-line text-4xl text-orange-200"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-8">
+                
+                        {% if error %}
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="POST" action="/setup" class="space-y-6" id="setupForm">
+                            <!-- Email -->
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-envelope text-gray-400 mr-1"></i>
+                                    Email Address
+                                </label>
+                                <input 
+                                    type="email" 
+                                    id="email" 
+                                    name="email" 
+                                    required 
+                                    value=""
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange text-base"
+                                    placeholder="you@example.com"
+                                >
+                                <p class="text-xs text-gray-500 mt-1">Your daily digest will be sent here at 8:30 AM London time</p>
+                            </div>
+
+                            <!-- Name (Optional) -->
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-user text-gray-400 mr-1"></i>
+                                    Name <span class="text-gray-400 font-normal">(Optional)</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="name" 
+                                    name="name" 
+                                    value=""
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange text-base"
+                                    placeholder="John Doe"
+                                >
+                            </div>
+
+                            <!-- Interest Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-heart text-gray-400 mr-1"></i>
+                                    Your Topics of Interest
+                                </label>
+                                <p class="text-xs text-gray-500 mb-4">
+                                    Select topics you care about. Our AI will find relevant stories based on these interests.
+                                </p>
+                        
+                                <div class="space-y-6">
+                                    {% for section_name, topics in topic_sections.items() %}
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <h4 class="font-semibold text-gray-800 mb-3 text-xs uppercase tracking-wider flex items-center">
+                                            {% if section_name == "Technology & Programming" %}
+                                            <i class="fas fa-code text-blue-500 mr-2"></i>
+                                            {% elif section_name == "Business & Industry" %}
+                                            <i class="fas fa-briefcase text-green-500 mr-2"></i>
+                                            {% elif section_name == "Science & Innovation" %}
+                                            <i class="fas fa-flask text-purple-500 mr-2"></i>
+                                            {% elif section_name == "Other Interests" %}
+                                            <i class="fas fa-star text-yellow-500 mr-2"></i>
+                                            {% endif %}
+                                            {{ section_name }}
+                                        </h4>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            {% for keyword in topics %}
+                                            <label class="flex items-center p-2 bg-white rounded-md hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="topic_{{ keyword }}" 
+                                                    value="interested" 
+                                                    class="h-4 w-4 text-hn-orange focus:ring-hn-orange border-gray-300 rounded"
+                                                >
+                                                <span class="ml-2 text-sm text-gray-700">{{ keyword }}</span>
+                                            </label>
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                     {% endfor %}
                                 </div>
-                            </div>
-                            {% endfor %}
-                        </div>
 
-                        <!-- Custom Interests -->
-                        <div class="mt-6">
-                            <h4 class="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">Custom Interests</h4>
-                            <p class="text-sm text-gray-600 mb-4">Add any topics not listed above</p>
+                                <!-- Custom Interests -->
+                                <div class="mt-6">
+                                    <h4 class="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">Custom Interests</h4>
+                                    <p class="text-sm text-gray-600 mb-4">Add any topics not listed above</p>
                             
-                            <!-- Add New Interest Form -->
-                            <div class="flex gap-2 mb-4 max-w-2xl">
-                                <input 
-                                    type="text" 
-                                    id="new_interest_input" 
-                                    placeholder="Enter a topic (e.g., blockchain, design, psychology)"
-                                    class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
-                                >
-                                <button 
-                                    type="button" 
-                                    onclick="addCustomInterest()"
-                                    class="px-4 py-2 bg-hn-orange text-white text-sm rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-hn-orange"
-                                >
-                                    Add Topic
-                                </button>
-                            </div>
+                                    <!-- Add New Interest Form -->
+                                    <div class="mb-4">
+                                        <div class="flex flex-col sm:flex-row gap-2">
+                                            <input 
+                                                type="text" 
+                                                id="new_interest_input" 
+                                                placeholder="Enter a topic (e.g., machine learning, cryptocurrency, climate)"
+                                                class="flex-1 px-4 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange"
+                                            >
+                                            <select 
+                                                id="category_select"
+                                                class="w-48 flex-shrink-0 px-4 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange focus:border-hn-orange bg-white"
+                                            >
+                                                <option value="">Select Category</option>
+                                                <option value="Technology & Programming">Technology & Programming</option>
+                                                <option value="Business & Finance">Business & Finance</option>
+                                                <option value="Science & Health">Science & Health</option>
+                                                <option value="General Interest">General Interest</option>
+                                            </select>
+                                            <button 
+                                                type="button"
+                                                onclick="validateAndAddInterest()"
+                                                class="px-6 py-3 bg-hn-orange text-white text-sm font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-hn-orange"
+                                            >
+                                                Add Interest
+                                            </button>
+                                        </div>
+                                    </div>
                             
-                            <!-- Added Custom Interests List -->
-                            <div id="custom_interests_list" class="space-y-2">
-                                <!-- Custom interests will be added here dynamically -->
-                            </div>
-                            
-                            <!-- Hidden inputs for form submission -->
-                            <div id="custom_interests_hidden">
-                                <!-- Hidden inputs will be added here -->
-                            </div>
-                        </div>
+                                    <!-- Added Custom Interests List -->
+                                    <div id="custom_interests_list" class="space-y-2">
+                                        <!-- Custom interests will be added here dynamically -->
+                                    </div>
+                                    
+                                    <!-- Hidden inputs for form submission -->
+                                    <div id="custom_interests_hidden">
+                                        <!-- Hidden inputs will be added here -->
+                                    </div>
+                                </div>
                         
                         <script>
                         let customInterestCounter = 0;
                         
-                        function addCustomInterest() {
+                        function validateAndAddInterest() {
                             const input = document.getElementById('new_interest_input');
-                            const interestText = input.value.trim();
+                            const categorySelect = document.getElementById('category_select');
                             
-                            if (!interestText) {
-                                alert('Please enter a topic');
+                            // Check if input is empty
+                            if (!input.value.trim()) {
+                                input.focus();
+                                input.reportValidity();
                                 return;
                             }
+                            
+                            // Check if category is not selected
+                            if (!categorySelect.value) {
+                                categorySelect.focus();
+                                categorySelect.reportValidity();
+                                return;
+                            }
+                            
+                            // If all validations pass, add the interest
+                            addCustomInterest();
+                        }
+                        
+                        function addCustomInterest() {
+                            const input = document.getElementById('new_interest_input');
+                            const categorySelect = document.getElementById('category_select');
+                            const interestText = input.value.trim();
+                            const category = categorySelect.value;
+                            
+                            // Clear any custom validity from previous attempts
+                            input.setCustomValidity('');
                             
                             // Check if already exists
                             const existingInterests = Array.from(document.querySelectorAll('.custom-interest-item')).map(el => el.dataset.interest);
                             if (existingInterests.includes(interestText.toLowerCase())) {
-                                alert('This topic has already been added');
+                                // Use custom validity for duplicate check
+                                input.setCustomValidity('This topic has already been added');
+                                input.reportValidity();
+                                setTimeout(() => input.setCustomValidity(''), 3000);
                                 return;
                             }
                             
@@ -167,10 +408,28 @@
                             itemDiv.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg custom-interest-item hover:bg-gray-100 transition-colors';
                             itemDiv.dataset.interest = interestText.toLowerCase();
                             
+                            // Determine icon based on category
+                            let categoryIcon = 'fa-star';
+                            let iconColor = 'text-yellow-500';
+                            if (category === 'Technology & Programming') {
+                                categoryIcon = 'fa-code';
+                                iconColor = 'text-blue-500';
+                            } else if (category === 'Business & Finance') {
+                                categoryIcon = 'fa-briefcase';
+                                iconColor = 'text-green-500';
+                            } else if (category === 'Science & Health') {
+                                categoryIcon = 'fa-flask';
+                                iconColor = 'text-purple-500';
+                            }
+                            
                             itemDiv.innerHTML = `
                                 <div class="flex items-center">
                                     <i class="fas fa-check-circle text-green-500 mr-2"></i>
                                     <span class="text-sm font-medium text-gray-700">${interestText}</span>
+                                    <span class="ml-2 text-xs text-gray-500">
+                                        <i class="fas ${categoryIcon} ${iconColor} mr-1"></i>
+                                        ${category}
+                                    </span>
                                 </div>
                                 <button type="button" onclick="removeCustomInterest(this)" class="text-red-500 hover:text-red-700 text-sm">
                                     Remove
@@ -178,8 +437,10 @@
                             `;
                             listDiv.appendChild(itemDiv);
                             
-                            // Create hidden input for form submission (just the keyword, no priority)
+                            // Create hidden inputs for form submission (keyword and priority)
                             const hiddenDiv = document.getElementById('custom_interests_hidden');
+                            
+                            // Hidden input for keyword
                             const hiddenInput = document.createElement('input');
                             hiddenInput.type = 'hidden';
                             hiddenInput.name = `custom_interest_${customInterestCounter}`;
@@ -187,24 +448,40 @@
                             hiddenInput.id = `hidden_${customInterestCounter}`;
                             hiddenDiv.appendChild(hiddenInput);
                             
+                            // Hidden input for category/priority
+                            const hiddenCategory = document.createElement('input');
+                            hiddenCategory.type = 'hidden';
+                            hiddenCategory.name = `custom_category_${customInterestCounter}`;
+                            hiddenCategory.value = category;
+                            hiddenCategory.id = `hidden_category_${customInterestCounter}`;
+                            hiddenDiv.appendChild(hiddenCategory);
+                            
                             itemDiv.dataset.hiddenId = `hidden_${customInterestCounter}`;
+                            itemDiv.dataset.hiddenCategoryId = `hidden_category_${customInterestCounter}`;
                             customInterestCounter++;
                             
-                            // Clear input
+                            // Clear inputs
                             input.value = '';
+                            categorySelect.value = '';
                         }
                         
                         function removeCustomInterest(button) {
                             const itemDiv = button.closest('.custom-interest-item');
                             const hiddenId = itemDiv.dataset.hiddenId;
+                            const hiddenCategoryId = itemDiv.dataset.hiddenCategoryId;
                             
                             // Remove visual item
                             itemDiv.remove();
                             
-                            // Remove hidden input
+                            // Remove hidden inputs
                             const hiddenInput = document.getElementById(hiddenId);
                             if (hiddenInput) {
                                 hiddenInput.remove();
+                            }
+                            
+                            const hiddenCategory = document.getElementById(hiddenCategoryId);
+                            if (hiddenCategory) {
+                                hiddenCategory.remove();
                             }
                         }
                         
@@ -216,72 +493,50 @@
                             }
                         });
                         </script>
-                    </div>
+                            </div>
 
 
-                    <!-- Submit -->
-                    <div class="pt-4">
-                        <button 
-                            type="submit"
-                            class="w-full bg-hn-orange text-white py-3 px-4 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-hn-orange focus:ring-offset-2 transition duration-200 font-medium"
-                        >
-                            <i class="fas fa-rocket mr-2"></i>Create My Personal HN Digest
-                        </button>
+                            <!-- Submit -->
+                            <div class="pt-6">
+                                <button 
+                                    type="submit"
+                                    class="w-full bg-hn-orange text-white py-4 px-6 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-hn-orange focus:ring-offset-2 transition duration-200 font-medium text-lg inline-flex items-center justify-center"
+                                >
+                                    <i class="fas fa-rocket mr-2"></i>
+                                    Create My Personal HN Digest
+                                </button>
+                                <p class="text-xs text-gray-500 text-center mt-3">
+                                    <i class="fas fa-lock mr-1"></i>
+                                    Your data is secure and we never send spam
+                                </p>
+                            </div>
+                        </form>
                     </div>
-                </form>
-            </div>
 
-            <!-- Feature Benefits -->
-            <div class="bg-gray-50 p-8 border-t">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">What you'll get:</h3>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="flex items-start space-x-3">
-                        <div class="text-2xl">🤖</div>
-                        <div>
-                            <h4 class="font-medium text-gray-800">AI-Powered Filtering</h4>
-                            <p class="text-sm text-gray-600">Our AI analyzes stories and picks only what matches your interests</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <div class="text-2xl">⚡</div>
-                        <div>
-                            <h4 class="font-medium text-gray-800">Smart Summaries</h4>
-                            <p class="text-sm text-gray-600">Get key insights and actionable takeaways, not just headlines</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <div class="text-2xl">📱</div>
-                        <div>
-                            <h4 class="font-medium text-gray-800">Mobile Dashboard</h4>
-                            <p class="text-sm text-gray-600">Access your personalized dashboard anywhere</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <div class="text-2xl">💰</div>
-                        <div>
-                            <h4 class="font-medium text-gray-800">Cost-Optimized</h4>
-                            <p class="text-sm text-gray-600">75% lower costs with local AI + OpenAI refinement</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Privacy Notice -->
-        <div class="max-w-2xl mx-auto mt-8 text-center text-sm text-gray-500">
-            <p>🔒 Your email and preferences are stored securely. We never share your data or send spam.</p>
-        </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="text-center text-sm text-gray-500">
+                <p>🤖 Powered by AI • Data from <a href="https://news.ycombinator.com" class="text-hn-orange hover:underline">Hacker News</a></p>
+                <p class="mt-2">Built with ❤️ using FastAPI, AI embeddings, and OpenAI</p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden">
         <div class="flex items-center justify-center min-h-screen">
-            <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
                 <div class="text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-robot text-hn-orange text-5xl animate-pulse"></i>
+                    <div class="mb-6">
+                        <i class="fas fa-robot text-hn-orange text-6xl animate-pulse"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-800 mb-2">Setting Up Your Personal Digest</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-3">Setting Up Your Personal Digest</h3>
                     <p class="text-gray-600 mb-6">We're analyzing today's Hacker News stories to find the ones that match your interests...</p>
                     
                     <!-- Progress Bar -->
