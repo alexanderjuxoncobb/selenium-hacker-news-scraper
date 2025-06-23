@@ -1189,23 +1189,24 @@ class DatabaseManager:
             cursor = conn.cursor()
             
             # For rating interactions (thumbs_up/thumbs_down), remove the opposite rating first
+            placeholder = self._get_placeholder()
             if interaction_type in ['thumbs_up', 'thumbs_down']:
                 opposite_type = 'thumbs_down' if interaction_type == 'thumbs_up' else 'thumbs_up'
-                cursor.execute("""
+                cursor.execute(f"""
                     DELETE FROM user_interactions 
-                    WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+                    WHERE user_id = {placeholder} AND story_id = {placeholder} AND interaction_type = {placeholder}
                 """, (user_id, story_id, opposite_type))
                 
                 # Also remove existing rating of the same type to allow toggling
-                cursor.execute("""
+                cursor.execute(f"""
                     DELETE FROM user_interactions 
-                    WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+                    WHERE user_id = {placeholder} AND story_id = {placeholder} AND interaction_type = {placeholder}
                 """, (user_id, story_id, interaction_type))
             
-            cursor.execute("""
+            cursor.execute(f"""
                 INSERT INTO user_interactions 
                 (user_id, story_id, interaction_type, timestamp, duration_seconds)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
             """, (user_id, story_id, interaction_type, datetime.now().isoformat(), duration_seconds))
             conn.commit()
     
@@ -1244,7 +1245,8 @@ class DatabaseManager:
         """Get all saved stories for a specific user, ordered by save date"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
                        s.author, s.comments_count, s.hn_discussion_url, 
                        s.article_summary, s.comments_analysis, s.is_relevant, 
@@ -1253,7 +1255,7 @@ class DatabaseManager:
                 FROM stories s
                 JOIN user_interactions ui ON s.id = ui.story_id
                 LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
-                WHERE ui.user_id = ? AND ui.interaction_type = 'save'
+                WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
                 ORDER BY ui.timestamp DESC
             """, (user_id,))
             
