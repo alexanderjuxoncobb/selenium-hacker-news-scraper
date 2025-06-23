@@ -160,9 +160,13 @@
                                 <a href="/admin/user/{{ user_stat.user.user_id }}" class="text-hn-orange hover:text-orange-600 mr-3">
                                     <i class="fas fa-eye mr-1"></i>View
                                 </a>
-                                <a href="/dashboard/{{ user_stat.user.user_id }}" class="text-blue-600 hover:text-blue-800">
+                                <a href="/dashboard/{{ user_stat.user.user_id }}" class="text-blue-600 hover:text-blue-800 mr-3">
                                     <i class="fas fa-external-link-alt mr-1"></i>Dashboard
                                 </a>
+                                <button onclick="confirmDeleteUser('{{ user_stat.user.user_id }}', '{{ user_stat.user.email }}')" 
+                                        class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -212,6 +216,41 @@ function triggerMultiUserScrape() {
         showToast('Failed to start scraping: ' + error.message, 'error');
         button.innerHTML = originalContent;
         button.disabled = false;
+    });
+}
+
+function confirmDeleteUser(userId, userEmail) {
+    // Show confirmation dialog
+    if (confirm(`Are you sure you want to delete user "${userEmail}"?\n\nThis will permanently delete all their data including:\n- Interactions\n- Interest settings\n- Saved stories\n- Story notes\n\nThis action cannot be undone.`)) {
+        deleteUser(userId, userEmail);
+    }
+}
+
+function deleteUser(userId, userEmail) {
+    // Since we're already authenticated as admin, just send the request
+    fetch(`/admin/user/${userId}`, {
+        method: 'DELETE',
+        headers: {
+            'Accept': 'application/json'
+        },
+        credentials: 'same-origin'  // Include auth credentials
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.detail || 'Failed to delete user');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        showToast(`User ${userEmail} deleted successfully`, 'success');
+        // Reload page after a short delay
+        setTimeout(() => window.location.reload(), 1500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to delete user: ' + error.message, 'error');
     });
 }
 </script>

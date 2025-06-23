@@ -1893,6 +1893,67 @@ class DatabaseManager:
             
             return interests
 
+    def delete_user(self, user_id: str) -> bool:
+        """
+        Safely delete a user and all related data in the correct order.
+        
+        Args:
+            user_id: The user's UUID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            placeholder = self._get_placeholder()
+            
+            try:
+                # Start transaction
+                if self.db_type == 'postgresql':
+                    cursor.execute("BEGIN")
+                
+                # 1. Delete story notes
+                cursor.execute(f"""
+                    DELETE FROM story_notes 
+                    WHERE user_id = {placeholder}
+                """, (user_id,))
+                
+                # 2. Delete user story relevance data
+                cursor.execute(f"""
+                    DELETE FROM user_story_relevance 
+                    WHERE user_id = {placeholder}
+                """, (user_id,))
+                
+                # 3. Delete user interest weights
+                cursor.execute(f"""
+                    DELETE FROM user_interest_weights 
+                    WHERE user_id = {placeholder}
+                """, (user_id,))
+                
+                # 4. Delete user interactions
+                cursor.execute(f"""
+                    DELETE FROM user_interactions 
+                    WHERE user_id = {placeholder}
+                """, (user_id,))
+                
+                # 5. Finally delete the user
+                cursor.execute(f"""
+                    DELETE FROM users 
+                    WHERE user_id = {placeholder}
+                """, (user_id,))
+                
+                # Commit transaction
+                conn.commit()
+                
+                print(f"✅ Successfully deleted user {user_id} and all related data")
+                return True
+                
+            except Exception as e:
+                # Rollback on error
+                conn.rollback()
+                print(f"❌ Error deleting user {user_id}: {str(e)}")
+                return False
+    
     def close(self):
         """Close database connection (SQLite auto-closes, but good practice)"""
         pass

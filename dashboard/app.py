@@ -890,6 +890,29 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
         print(f"❌ Error in admin analytics: {e}")
         raise HTTPException(status_code=500, detail=f"Error loading analytics: {str(e)}")
 
+@app.delete("/admin/user/{user_id}")
+async def delete_user(user_id: str, admin: str = Depends(get_current_admin)):
+    """Delete a user and all their data"""
+    try:
+        # Verify the user exists
+        user = db.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Delete the user
+        success = db.delete_user(user_id)
+        
+        if success:
+            return {"status": "success", "message": f"User {user.email} deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete user")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
+
 @app.post("/admin/run-multi-user-scrape")
 async def admin_trigger_scrape(admin: str = Depends(get_current_admin)):
     """Admin endpoint to trigger multi-user scraping"""
