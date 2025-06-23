@@ -1142,9 +1142,10 @@ class DatabaseManager:
         """Get user by UUID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT id, user_id, email, name, created_at, last_active_at
-                FROM users WHERE user_id = ?
+                FROM users WHERE user_id = {placeholder}
             """, (user_id,))
             
             row = cursor.fetchone()
@@ -1159,8 +1160,9 @@ class DatabaseManager:
         """Update user's last active timestamp"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE users SET last_active_at = ? WHERE user_id = ?
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
+                UPDATE users SET last_active_at = {placeholder} WHERE user_id = {placeholder}
             """, (datetime.now().isoformat(), user_id))
             conn.commit()
     
@@ -1209,10 +1211,11 @@ class DatabaseManager:
         """Get all interactions for a specific story by a specific user"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT interaction_type, timestamp, duration_seconds
                 FROM user_interactions 
-                WHERE user_id = ? AND story_id = ?
+                WHERE user_id = {placeholder} AND story_id = {placeholder}
                 ORDER BY timestamp DESC
             """, (user_id, story_id))
             
@@ -1454,11 +1457,21 @@ class DatabaseManager:
         """Update or insert a global interest weight (for default templates)"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR REPLACE INTO interest_weights 
-                (keyword, weight, category, updated_at)
-                VALUES (?, ?, ?, ?)
-            """, (keyword, weight, category, datetime.now().isoformat()))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute("""
+                    INSERT OR REPLACE INTO interest_weights 
+                    (keyword, weight, category, updated_at)
+                    VALUES (?, ?, ?, ?)
+                """, (keyword, weight, category, datetime.now().isoformat()))
+            else:  # PostgreSQL
+                cursor.execute("""
+                    INSERT INTO interest_weights 
+                    (keyword, weight, category, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (keyword) DO UPDATE SET
+                    weight = EXCLUDED.weight, category = EXCLUDED.category, updated_at = EXCLUDED.updated_at
+                """, (keyword, weight, category, datetime.now().isoformat()))
             conn.commit()
     
     def get_interest_weights(self) -> List[InterestWeight]:
