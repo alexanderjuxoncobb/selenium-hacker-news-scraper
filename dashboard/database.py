@@ -1406,16 +1406,12 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            sql = f"""
+            cursor.execute(f"""
                 SELECT id, user_id, keyword, weight, category, updated_at
                 FROM user_interest_weights 
                 WHERE user_id = {placeholder}
                 ORDER BY weight DESC, keyword
-            """
-            print(f"🔍 DEBUG SQL: {sql}")
-            print(f"🔍 DEBUG params: ({user_id},)")
-            print(f"🔍 DEBUG db_type: {self.db_type}")
-            cursor.execute(sql, (user_id,))
+            """, (user_id,))
             
             return [
                 UserInterestWeight(

@@ -211,11 +211,22 @@ async def setup_submit(request: Request):
                     db.update_user_interest_weight(user_id, keyword, 1.0, "general")
                     print(f"✅ Added custom interest: {keyword} (category: general)")
         
-        # Process only today's stories for the new user (signup date)
+        # Process only today's stories for the new user (signup date) if any exist
         print(f"🔄 Processing today's stories for new user {user_id}...")
-        processing_stats = db.batch_process_user_relevance_from_date(user_id, date.today().isoformat())
-        print(f"✅ Processed {processing_stats['processed_stories']} stories, found {processing_stats['relevant_stories']} relevant")
-        print(f"📊 Processing stats: {processing_stats}")
+        today_stories = db.get_stories_by_date(date.today().strftime('%Y-%m-%d'))
+        
+        if len(today_stories) > 0:
+            processing_stats = db.batch_process_user_relevance_from_date(user_id, date.today().isoformat())
+            print(f"✅ Processed {processing_stats['processed_stories']} stories, found {processing_stats['relevant_stories']} relevant")
+            print(f"📊 Processing stats: {processing_stats}")
+        else:
+            print("ℹ️  No stories found for today - user setup completed, stories will be processed during next scrape")
+            processing_stats = {
+                'processed_stories': 0,
+                'relevant_stories': 0,
+                'skipped_stories': 0,
+                'message': 'No stories available yet - will be processed during next scrape'
+            }
         
         # Get user and interest count for success page
         user = db.get_user(user_id)
@@ -989,6 +1000,48 @@ async def debug_database():
             "database_type": getattr(db, 'db_type', 'unknown'),
             "database_url": getattr(db, 'db_url', 'unknown')[:50] + "...",
             "connection_working": False
+        }
+
+@app.post("/admin/trigger-scrape")
+async def trigger_manual_scrape():
+    """Manually trigger the scraper to populate database with stories"""
+    try:
+        import subprocess
+        import os
+        
+        # Change to parent directory and run the enhanced scraper
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Run the scraper in the background
+        result = subprocess.run([
+            "python", "enhanced_scraper.py"
+        ], cwd=parent_dir, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            return {
+                "success": True,
+                "message": "Scraper completed successfully",
+                "output": result.stdout[-500:] if result.stdout else ""  # Last 500 chars
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Scraper failed",
+                "error": result.stderr[-500:] if result.stderr else "",
+                "output": result.stdout[-500:] if result.stdout else ""
+            }
+            
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "message": "Scraper timed out (>5 minutes)",
+            "error": "Timeout"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error running scraper: {str(e)}",
+            "error": str(e)
         }
 
 if __name__ == "__main__":
