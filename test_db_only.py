@@ -12,7 +12,7 @@ from dashboard.database import DatabaseManager
 def main():
     print("🔍 Testing Single Priority Database Implementation\n")
     
-    db = DatabaseManager("hn_scraper.db")
+    db = DatabaseManager()
     
     # Test 1: Check that all weights are 1.0
     print("Test 1: Verifying all interests have weight 1.0")

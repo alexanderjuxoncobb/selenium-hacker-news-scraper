@@ -59,7 +59,7 @@ class CostOptimizedAI:
             from database import DatabaseManager
             
             # Try to load from database
-            db = DatabaseManager("hn_scraper.db")
+            db = DatabaseManager()
             interest_weights = db.get_interest_weights()
             
             if not interest_weights:

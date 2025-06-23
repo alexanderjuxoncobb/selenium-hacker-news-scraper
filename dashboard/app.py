@@ -30,7 +30,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Initialize database
-db = DatabaseManager("../hn_scraper.db")
+# This will use DATABASE_URL from environment if set, otherwise defaults to SQLite
+db = DatabaseManager()
 
 # Admin authentication
 security = HTTPBasic()

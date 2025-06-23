@@ -14,7 +14,7 @@ def test_database_interests():
     """Test that interests are stored with weight 1.0"""
     print("🔍 Testing database interest storage...")
     
-    db = DatabaseManager("hn_scraper.db")
+    db = DatabaseManager()
     
     # Get a test user
     users = db.get_all_users()
@@ -80,7 +80,7 @@ def test_category_distribution():
     """Test category distribution after migration"""
     print("\n🔍 Testing category distribution...")
     
-    db = DatabaseManager("hn_scraper.db")
+    db = DatabaseManager()
     
     # Get all interests
     users = db.get_all_users()

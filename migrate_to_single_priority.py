@@ -60,7 +60,7 @@ def get_topic_category_mapping():
 
 def migrate_user_interests():
     """Migrate all user interests to single priority system"""
-    db = DatabaseManager("hn_scraper.db")
+    db = DatabaseManager()
     category_mapping = get_topic_category_mapping()
     
     print("🔄 Starting migration to single priority system...")
@@ -96,7 +96,7 @@ def migrate_user_interests():
 
 def verify_migration():
     """Verify the migration worked correctly"""
-    db = DatabaseManager("hn_scraper.db")
+    db = DatabaseManager()
     
     print("\n🔍 Verifying migration...")
     

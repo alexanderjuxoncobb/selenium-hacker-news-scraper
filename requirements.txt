@@ -30,3 +30,4 @@ sentence-transformers==4.1.0
 scikit-learn==1.7.0
 python-multipart==0.0.20
 resend==2.10.0
+psycopg2-binary==2.9.9

@@ -3,24 +3,13 @@
 Database models and operations for HN Scraper Dashboard
 """
 
+import sqlite3
 import json
 from datetime import datetime, date
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import os
 import uuid
-from urllib.parse import urlparse
-from contextlib import contextmanager
-
-# Database imports - support both SQLite and PostgreSQL
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    PSYCOPG2_AVAILABLE = True
-except ImportError:
-    PSYCOPG2_AVAILABLE = False
-
-import sqlite3
 
 @dataclass
 class Story:
@@ -86,293 +75,136 @@ class InterestWeight:
     updated_at: str
 
 class DatabaseManager:
-    def __init__(self, db_url: str = None):
-        # Use DATABASE_URL from env if not provided
-        if db_url is None:
-            db_url = os.getenv('DATABASE_URL', 'sqlite:///hn_scraper.db')
-        
-        self.db_url = db_url
-        self.db_type = self._get_db_type(db_url)
-        
-        if self.db_type == 'postgresql' and not PSYCOPG2_AVAILABLE:
-            raise ImportError("psycopg2 is required for PostgreSQL support. Install with: pip install psycopg2-binary")
-        
-        # For SQLite, extract the path
-        if self.db_type == 'sqlite':
-            self.db_path = db_url.replace('sqlite:///', '')
-        
+    def __init__(self, db_path: str = "hn_scraper.db"):
+        self.db_path = db_path
         self.init_database()
-    
-    def _get_db_type(self, db_url: str) -> str:
-        """Determine database type from URL"""
-        if db_url.startswith('sqlite'):
-            return 'sqlite'
-        elif db_url.startswith('postgresql') or db_url.startswith('postgres'):
-            return 'postgresql'
-        else:
-            raise ValueError(f"Unsupported database URL: {db_url}")
-    
-    @contextmanager
-    def get_connection(self):
-        """Get database connection based on type"""
-        if self.db_type == 'sqlite':
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                yield conn
-            finally:
-                conn.close()
-        else:  # PostgreSQL
-            conn = psycopg2.connect(self.db_url)
-            try:
-                yield conn
-            finally:
-                conn.close()
     
     def init_database(self):
         """Initialize database with required tables and handle migrations"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
             # Check if we need to migrate existing database
-            if self.db_type == 'sqlite':
-                self._migrate_to_multi_user(cursor)
+            self._migrate_to_multi_user(cursor)
             
             # Users table
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT UNIQUE NOT NULL,
-                        email TEXT NOT NULL,
-                        name TEXT,
-                        created_at TEXT NOT NULL,
-                        last_active_at TEXT
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id SERIAL PRIMARY KEY,
-                        user_id TEXT UNIQUE NOT NULL,
-                        email TEXT NOT NULL,
-                        name TEXT,
-                        created_at TEXT NOT NULL,
-                        last_active_at TEXT
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT UNIQUE NOT NULL,  -- UUID
+                    email TEXT NOT NULL,
+                    name TEXT,
+                    created_at TEXT NOT NULL,
+                    last_active_at TEXT
+                )
+            """)
             
             # Stories table (shared across users with tags for better categorization)
             # Note: is_relevant and relevance_score moved to user_story_relevance table
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS stories (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        date TEXT NOT NULL,
-                        rank INTEGER NOT NULL,
-                        story_id TEXT,
-                        title TEXT NOT NULL,
-                        url TEXT NOT NULL,
-                        points INTEGER DEFAULT 0,
-                        author TEXT,
-                        comments_count INTEGER DEFAULT 0,
-                        hn_discussion_url TEXT,
-                        article_summary TEXT,
-                        comments_analysis TEXT,
-                        scraped_at TEXT NOT NULL,
-                        was_cached BOOLEAN DEFAULT FALSE,
-                        tags TEXT,
-                        UNIQUE(date, rank)
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS stories (
-                        id SERIAL PRIMARY KEY,
-                        date TEXT NOT NULL,
-                        rank INTEGER NOT NULL,
-                        story_id TEXT,
-                        title TEXT NOT NULL,
-                        url TEXT NOT NULL,
-                        points INTEGER DEFAULT 0,
-                        author TEXT,
-                        comments_count INTEGER DEFAULT 0,
-                        hn_discussion_url TEXT,
-                        article_summary TEXT,
-                        comments_analysis TEXT,
-                        scraped_at TEXT NOT NULL,
-                        was_cached BOOLEAN DEFAULT FALSE,
-                        tags TEXT,
-                        UNIQUE(date, rank)
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS stories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    rank INTEGER NOT NULL,
+                    story_id TEXT,  -- HN story ID for deduplication
+                    title TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    points INTEGER DEFAULT 0,
+                    author TEXT,
+                    comments_count INTEGER DEFAULT 0,
+                    hn_discussion_url TEXT,
+                    article_summary TEXT,
+                    comments_analysis TEXT,  -- JSON string
+                    scraped_at TEXT NOT NULL,
+                    was_cached BOOLEAN DEFAULT FALSE,  -- Track if story was served from cache
+                    tags TEXT,  -- JSON array of semantic tags for categorization
+                    UNIQUE(date, rank)
+                )
+            """)
             
             # Add story_id column if it doesn't exist (migration)
-            if self.db_type == 'sqlite':
-                try:
-                    cursor.execute("ALTER TABLE stories ADD COLUMN story_id TEXT")
-                except sqlite3.OperationalError:
-                    pass  # Column already exists
-            else:  # PostgreSQL
-                cursor.execute("""
-                    DO $$ 
-                    BEGIN
-                        BEGIN
-                            ALTER TABLE stories ADD COLUMN story_id TEXT;
-                        EXCEPTION
-                            WHEN duplicate_column THEN NULL;
-                        END;
-                    END $$;
-                """)
+            try:
+                cursor.execute("ALTER TABLE stories ADD COLUMN story_id TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
                 
             # Note: For existing databases, is_relevant and relevance_score columns will still exist
             # but won't be used. New relevance data goes in user_story_relevance table.
             
             # User interactions table
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_interactions (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        interaction_type TEXT NOT NULL,
-                        timestamp TEXT NOT NULL,
-                        duration_seconds INTEGER,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id)
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_interactions (
-                        id SERIAL PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        interaction_type TEXT NOT NULL,
-                        timestamp TEXT NOT NULL,
-                        duration_seconds INTEGER,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id)
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_interactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    story_id INTEGER NOT NULL,
+                    interaction_type TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    duration_seconds INTEGER,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (story_id) REFERENCES stories (id)
+                )
+            """)
             
             # User-specific interest weights table
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_interest_weights (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        keyword TEXT NOT NULL,
-                        weight REAL NOT NULL,
-                        category TEXT NOT NULL,
-                        updated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        UNIQUE(user_id, keyword)
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_interest_weights (
-                        id SERIAL PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        keyword TEXT NOT NULL,
-                        weight REAL NOT NULL,
-                        category TEXT NOT NULL,
-                        updated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        UNIQUE(user_id, keyword)
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_interest_weights (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    keyword TEXT NOT NULL,
+                    weight REAL NOT NULL,
+                    category TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    UNIQUE(user_id, keyword)
+                )
+            """)
             
             # Global interest weights table (for default templates)
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS interest_weights (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        keyword TEXT UNIQUE NOT NULL,
-                        weight REAL NOT NULL,
-                        category TEXT NOT NULL,
-                        updated_at TEXT NOT NULL
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS interest_weights (
-                        id SERIAL PRIMARY KEY,
-                        keyword TEXT UNIQUE NOT NULL,
-                        weight REAL NOT NULL,
-                        category TEXT NOT NULL,
-                        updated_at TEXT NOT NULL
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS interest_weights (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    keyword TEXT UNIQUE NOT NULL,
+                    weight REAL NOT NULL,
+                    category TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
             
             # User-specific story relevance table (replaces is_relevant in stories table)
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_story_relevance (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        is_relevant BOOLEAN NOT NULL,
-                        relevance_score REAL NOT NULL,
-                        relevance_reasoning TEXT,
-                        calculated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id),
-                        UNIQUE(user_id, story_id)
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_story_relevance (
-                        id SERIAL PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        is_relevant BOOLEAN NOT NULL,
-                        relevance_score REAL NOT NULL,
-                        relevance_reasoning TEXT,
-                        calculated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id),
-                        UNIQUE(user_id, story_id)
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_story_relevance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    story_id INTEGER NOT NULL,
+                    is_relevant BOOLEAN NOT NULL,
+                    relevance_score REAL NOT NULL,
+                    relevance_reasoning TEXT,
+                    calculated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (story_id) REFERENCES stories (id),
+                    UNIQUE(user_id, story_id)
+                )
+            """)
             
             # User-specific story notes table
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS story_notes (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        notes TEXT,
-                        created_at TEXT NOT NULL,
-                        updated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id),
-                        UNIQUE(user_id, story_id)
-                    )
-                """)
-            else:  # PostgreSQL
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS story_notes (
-                        id SERIAL PRIMARY KEY,
-                        user_id TEXT NOT NULL,
-                        story_id INTEGER NOT NULL,
-                        notes TEXT,
-                        created_at TEXT NOT NULL,
-                        updated_at TEXT NOT NULL,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id),
-                        FOREIGN KEY (story_id) REFERENCES stories (id),
-                        UNIQUE(user_id, story_id)
-                    )
-                """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS story_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    story_id INTEGER NOT NULL,
+                    notes TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (story_id) REFERENCES stories (id),
+                    UNIQUE(user_id, story_id)
+                )
+            """)
             
             conn.commit()
             
             # Create indexes for better performance (after tables are created)
             self._create_indexes(cursor)
-            conn.commit()
     
     def _create_indexes(self, cursor):
         """Create database indexes"""
@@ -399,7 +231,7 @@ class DatabaseManager:
             scrape_date = data.get('scrape_date', '')[:10]  # Get YYYY-MM-DD part
             stories = data.get('stories', [])
             
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
                 for story in stories:
@@ -413,65 +245,28 @@ class DatabaseManager:
                     if story.get('tags'):
                         tags_json = json.dumps(story['tags'])
                     
-                    if self.db_type == 'sqlite':
-                        cursor.execute("""
-                            INSERT OR REPLACE INTO stories 
-                            (date, rank, story_id, title, url, points, author, comments_count, 
-                             hn_discussion_url, article_summary, comments_analysis, 
-                             scraped_at, was_cached, tags)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            scrape_date,
-                            story.get('rank', 0),
-                            story.get('story_id', ''),
-                            story.get('title', ''),
-                            story.get('url', ''),
-                            story.get('points', 0),
-                            story.get('author', ''),
-                            story.get('comments_count', 0),
-                            story.get('hn_discussion_url', ''),
-                            story.get('article_summary'),
-                            comments_analysis_json,
-                            story.get('scraped_at', data.get('scrape_date', '')),
-                            story.get('was_cached', False),
-                            tags_json
-                        ))
-                    else:  # PostgreSQL
-                        cursor.execute("""
-                            INSERT INTO stories 
-                            (date, rank, story_id, title, url, points, author, comments_count, 
-                             hn_discussion_url, article_summary, comments_analysis, 
-                             scraped_at, was_cached, tags)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (date, rank) DO UPDATE SET
-                                story_id = EXCLUDED.story_id,
-                                title = EXCLUDED.title,
-                                url = EXCLUDED.url,
-                                points = EXCLUDED.points,
-                                author = EXCLUDED.author,
-                                comments_count = EXCLUDED.comments_count,
-                                hn_discussion_url = EXCLUDED.hn_discussion_url,
-                                article_summary = EXCLUDED.article_summary,
-                                comments_analysis = EXCLUDED.comments_analysis,
-                                scraped_at = EXCLUDED.scraped_at,
-                                was_cached = EXCLUDED.was_cached,
-                                tags = EXCLUDED.tags
-                        """, (
-                            scrape_date,
-                            story.get('rank', 0),
-                            story.get('story_id', ''),
-                            story.get('title', ''),
-                            story.get('url', ''),
-                            story.get('points', 0),
-                            story.get('author', ''),
-                            story.get('comments_count', 0),
-                            story.get('hn_discussion_url', ''),
-                            story.get('article_summary'),
-                            comments_analysis_json,
-                            story.get('scraped_at', data.get('scrape_date', '')),
-                            story.get('was_cached', False),
-                            tags_json
-                        ))
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO stories 
+                        (date, rank, story_id, title, url, points, author, comments_count, 
+                         hn_discussion_url, article_summary, comments_analysis, 
+                         scraped_at, was_cached, tags)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        scrape_date,
+                        story.get('rank', 0),
+                        story.get('story_id', ''),
+                        story.get('title', ''),
+                        story.get('url', ''),
+                        story.get('points', 0),
+                        story.get('author', ''),
+                        story.get('comments_count', 0),
+                        story.get('hn_discussion_url', ''),
+                        story.get('article_summary'),
+                        comments_analysis_json,
+                        story.get('scraped_at', data.get('scrape_date', '')),
+                        story.get('was_cached', False),
+                        tags_json
+                    ))
                 
                 conn.commit()
                 print(f"✅ Imported {len(stories)} stories from {json_file_path}")
@@ -488,7 +283,7 @@ class DatabaseManager:
             scrape_date = data.get('scrape_date', '')[:10]  # Get YYYY-MM-DD part
             stories = data.get('stories', [])
             
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
                 for story in stories:
@@ -503,14 +298,13 @@ class DatabaseManager:
                         tags_json = json.dumps(story['tags'])
                     
                     # Insert story (without relevance fields)
-                    if self.db_type == 'sqlite':
-                        cursor.execute("""
-                            INSERT OR REPLACE INTO stories 
-                            (date, rank, story_id, title, url, points, author, comments_count, 
-                             hn_discussion_url, article_summary, comments_analysis, 
-                             scraped_at, was_cached, tags)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO stories 
+                        (date, rank, story_id, title, url, points, author, comments_count, 
+                         hn_discussion_url, article_summary, comments_analysis, 
+                         scraped_at, was_cached, tags)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
                         scrape_date,
                         story.get('rank', 0),
                         story.get('story_id', ''),
@@ -526,84 +320,24 @@ class DatabaseManager:
                         story.get('was_cached', False),
                         tags_json
                     ))
-                    else:  # PostgreSQL
-                        cursor.execute("""
-                            INSERT INTO stories 
-                            (date, rank, story_id, title, url, points, author, comments_count, 
-                             hn_discussion_url, article_summary, comments_analysis, 
-                             scraped_at, was_cached, tags)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (date, rank) DO UPDATE SET
-                                story_id = EXCLUDED.story_id,
-                                title = EXCLUDED.title,
-                                url = EXCLUDED.url,
-                                points = EXCLUDED.points,
-                                author = EXCLUDED.author,
-                                comments_count = EXCLUDED.comments_count,
-                                hn_discussion_url = EXCLUDED.hn_discussion_url,
-                                article_summary = EXCLUDED.article_summary,
-                                comments_analysis = EXCLUDED.comments_analysis,
-                                scraped_at = EXCLUDED.scraped_at,
-                                was_cached = EXCLUDED.was_cached,
-                                tags = EXCLUDED.tags
-                            RETURNING id
-                        """, (
-                            scrape_date,
-                            story.get('rank', 0),
-                            story.get('story_id', ''),
-                            story.get('title', ''),
-                            story.get('url', ''),
-                            story.get('points', 0),
-                            story.get('author', ''),
-                            story.get('comments_count', 0),
-                            story.get('hn_discussion_url', ''),
-                            story.get('article_summary'),
-                            comments_analysis_json,
-                            story.get('scraped_at', data.get('scrape_date', '')),
-                            story.get('was_cached', False),
-                            tags_json
-                        ))
                     
                     # Get the story ID for relevance storage
-                    if self.db_type == 'sqlite':
-                        story_db_id = cursor.lastrowid
-                    else:  # PostgreSQL
-                        result = cursor.fetchone()
-                        story_db_id = result[0] if isinstance(result, tuple) else result['id']
+                    story_db_id = cursor.lastrowid
                     
                     # Store user-specific relevance if user_id provided and relevance data exists
                     if user_id and 'is_relevant' in story:
-                        if self.db_type == 'sqlite':
-                            cursor.execute("""
-                                INSERT OR REPLACE INTO user_story_relevance 
-                                (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (
-                                user_id,
-                                story_db_id,
-                                story.get('is_relevant', False),
-                                story.get('relevance_score', 0.0),
-                                story.get('relevance_reasoning'),
-                                datetime.now().isoformat()
-                            ))
-                        else:  # PostgreSQL
-                            cursor.execute("""
-                                INSERT INTO user_story_relevance 
-                                (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
-                                VALUES (%s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (user_id, story_id) DO UPDATE SET
-                                    is_relevant = EXCLUDED.is_relevant,
-                                    relevance_score = EXCLUDED.relevance_score,
-                                    relevance_reasoning = EXCLUDED.relevance_reasoning,
-                                    calculated_at = EXCLUDED.calculated_at
-                            """, (
-                                user_id,
-                                story_db_id,
-                                story.get('is_relevant', False),
-                                story.get('relevance_score', 0.0),
-                                story.get('relevance_reasoning'),
-                                datetime.now().isoformat()
-                            ))
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO user_story_relevance 
+                            (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            user_id,
+                            story_db_id,
+                            story.get('is_relevant', False),
+                            story.get('relevance_score', 0.0),
+                            story.get('relevance_reasoning'),
+                            datetime.now().isoformat()
+                        ))
                 
                 conn.commit()
                 print(f"✅ Imported {len(stories)} stories from {json_file_path}")
@@ -615,93 +349,52 @@ class DatabaseManager:
     
     def get_stories_by_date(self, target_date: str) -> List[Story]:
         """Get all stories for a specific date"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    SELECT id, date, rank, story_id, title, url, points, author, comments_count,
-                           hn_discussion_url, article_summary, comments_analysis,
-                           scraped_at, COALESCE(was_cached, 0) as was_cached, tags
-                    FROM stories 
-                    WHERE date = ? 
-                    ORDER BY rank
-                """, (target_date,))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    SELECT id, date, rank, story_id, title, url, points, author, comments_count,
-                           hn_discussion_url, article_summary, comments_analysis,
-                           scraped_at, COALESCE(was_cached, false) as was_cached, tags
-                    FROM stories 
-                    WHERE date = %s 
-                    ORDER BY rank
-                """, (target_date,))
+            cursor.execute("""
+                SELECT id, date, rank, story_id, title, url, points, author, comments_count,
+                       hn_discussion_url, article_summary, comments_analysis,
+                       scraped_at, COALESCE(was_cached, 0) as was_cached, tags
+                FROM stories 
+                WHERE date = ? 
+                ORDER BY rank
+            """, (target_date,))
             
             rows = cursor.fetchall()
             stories = []
             
             for row in rows:
-                # Handle both dict (PostgreSQL) and tuple (SQLite) row formats
-                if isinstance(row, dict):
-                    comments_analysis = None
-                    if row['comments_analysis']:
-                        try:
-                            comments_analysis = json.loads(row['comments_analysis'])
-                        except json.JSONDecodeError:
-                            pass
-                    
-                    tags = None
-                    if row['tags']:
-                        try:
-                            tags = json.loads(row['tags'])
-                        except json.JSONDecodeError:
-                            pass
-                    
-                    story = Story(
-                        id=row['id'], date=row['date'], rank=row['rank'], story_id=row['story_id'],
-                        title=row['title'], url=row['url'], points=row['points'], author=row['author'],
-                        comments_count=row['comments_count'], hn_discussion_url=row['hn_discussion_url'],
-                        article_summary=row['article_summary'], scraped_at=row['scraped_at'],
-                        was_cached=bool(row['was_cached']), comments_analysis=comments_analysis, tags=tags
-                    )
-                else:  # SQLite tuple format
-                    comments_analysis = None
-                    if row[11]:  # comments_analysis column
-                        try:
-                            comments_analysis = json.loads(row[11])
-                        except json.JSONDecodeError:
-                            pass
-                    
-                    tags = None
-                    if row[14]:  # tags column
-                        try:
-                            tags = json.loads(row[14])
-                        except json.JSONDecodeError:
-                            pass
-                    
-                    story = Story(
-                        id=row[0], date=row[1], rank=row[2], story_id=row[3], title=row[4], url=row[5],
-                        points=row[6], author=row[7], comments_count=row[8],
-                        hn_discussion_url=row[9], article_summary=row[10],
-                        scraped_at=row[12], was_cached=bool(row[13]), 
-                        comments_analysis=comments_analysis, tags=tags
-                    )
+                comments_analysis = None
+                if row[11]:  # comments_analysis column
+                    try:
+                        comments_analysis = json.loads(row[11])
+                    except json.JSONDecodeError:
+                        pass
+                
+                tags = None
+                if row[14]:  # tags column
+                    try:
+                        tags = json.loads(row[14])
+                    except json.JSONDecodeError:
+                        pass
+                
+                story = Story(
+                    id=row[0], date=row[1], rank=row[2], story_id=row[3], title=row[4], url=row[5],
+                    points=row[6], author=row[7], comments_count=row[8],
+                    hn_discussion_url=row[9], article_summary=row[10],
+                    scraped_at=row[12], was_cached=bool(row[13]), 
+                    comments_analysis=comments_analysis, tags=tags
+                )
                 stories.append(story)
             
             return stories
     
     def story_exists_by_hn_id(self, story_id: str) -> bool:
         """Check if a story with the given HN story ID already exists in database"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = ?", (story_id,))
-                return cursor.fetchone()[0] > 0
-            else:  # PostgreSQL
-                cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = %s", (story_id,))
-                result = cursor.fetchone()
-                return result[0] > 0 if isinstance(result, tuple) else result['count'] > 0
+            cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = ?", (story_id,))
+            return cursor.fetchone()[0] > 0
     
     def store_user_story_relevance(self, user_id: str, story_db_id: int, is_relevant: bool, 
                                  relevance_score: float, relevance_reasoning: str = None) -> None:
@@ -712,34 +405,19 @@ class DatabaseManager:
         except (ValueError, TypeError):
             relevance_score = 0.0
             
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             # Debug what we're storing
             print(f"🔍 Storing relevance: user_id={user_id}, story_id={story_db_id}, is_relevant={is_relevant} (type: {type(is_relevant)}), score={relevance_score}")
             
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    INSERT OR REPLACE INTO user_story_relevance 
-                    (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    user_id, story_db_id, int(is_relevant), relevance_score, 
-                    relevance_reasoning, datetime.now().isoformat()
-                ))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    INSERT INTO user_story_relevance 
-                    (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (user_id, story_id) DO UPDATE SET
-                        is_relevant = EXCLUDED.is_relevant,
-                        relevance_score = EXCLUDED.relevance_score,
-                        relevance_reasoning = EXCLUDED.relevance_reasoning,
-                        calculated_at = EXCLUDED.calculated_at
-                """, (
-                    user_id, story_db_id, is_relevant, relevance_score, 
-                    relevance_reasoning, datetime.now().isoformat()
-                ))
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_story_relevance 
+                (user_id, story_id, is_relevant, relevance_score, relevance_reasoning, calculated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id, story_db_id, int(is_relevant), relevance_score, 
+                relevance_reasoning, datetime.now().isoformat()
+            ))
             conn.commit()
     
     def get_user_story_relevance(self, user_id: str, story_db_id: int) -> Optional[UserStoryRelevance]:
@@ -961,15 +639,9 @@ class DatabaseManager:
     
     def get_available_dates(self) -> List[str]:
         """Get all dates that have scraped data"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT date FROM stories ORDER BY date DESC")
-            
-            if self.db_type == 'postgresql':
-                # Handle both dict and tuple results
-                rows = cursor.fetchall()
-                if rows and isinstance(rows[0], dict):
-                    return [row['date'] for row in rows]
             return [row[0] for row in cursor.fetchall()]
     
     def get_available_dates_for_user(self, user_id: str) -> List[str]:
@@ -986,94 +658,50 @@ class DatabaseManager:
     
     def get_stats_by_date(self, target_date: str) -> Dict:
         """Get statistics for a specific date, matching what's displayed on the dashboard"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
             # Get basic story stats
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    SELECT 
-                        COUNT(*) as total_scraped,
-                        SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
-                        AVG(points) as avg_points,
-                        SUM(comments_count) as total_comments,
-                        SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
-                    FROM stories 
-                    WHERE date = ?
-                """, (target_date,))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    SELECT 
-                        COUNT(*) as total_scraped,
-                        SUM(CASE WHEN COALESCE(was_cached, false) = false THEN 1 ELSE 0 END) as total_stories,
-                        AVG(points) as avg_points,
-                        SUM(comments_count) as total_comments,
-                        SUM(CASE WHEN COALESCE(was_cached, false) = true THEN 1 ELSE 0 END) as cached_stories
-                    FROM stories 
-                    WHERE date = %s
-                """, (target_date,))
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_scraped,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
+                    AVG(points) as avg_points,
+                    SUM(comments_count) as total_comments,
+                    SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
+                FROM stories 
+                WHERE date = ?
+            """, (target_date,))
             
             row = cursor.fetchone()
-            if isinstance(row, dict):
-                total_scraped = row['total_scraped'] or 0
-                total_stories = row['total_stories'] or 0
-                avg_points = row['avg_points'] or 0
-                total_comments = row['total_comments'] or 0
-                cached_stories = row['cached_stories'] or 0
-            else:
-                total_scraped = row[0] or 0
-                total_stories = row[1] or 0
-                avg_points = row[2] or 0
-                total_comments = row[3] or 0
-                cached_stories = row[4] or 0
             
             # For multi-user system, calculate relevant stories across all users
             # Count unique stories that are relevant to at least one user
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT usr.story_id) as relevant_stories
-                    FROM user_story_relevance usr
-                    JOIN stories s ON usr.story_id = s.id
-                    WHERE s.date = ? AND usr.is_relevant = 1
-                """, (target_date,))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT usr.story_id) as relevant_stories
-                    FROM user_story_relevance usr
-                    JOIN stories s ON usr.story_id = s.id
-                    WHERE s.date = %s AND usr.is_relevant = true
-                """, (target_date,))
+            cursor.execute("""
+                SELECT COUNT(DISTINCT usr.story_id) as relevant_stories
+                FROM user_story_relevance usr
+                JOIN stories s ON usr.story_id = s.id
+                WHERE s.date = ? AND usr.is_relevant = 1
+            """, (target_date,))
             
-            result = cursor.fetchone()
-            relevant_count = (result['relevant_stories'] if isinstance(result, dict) else result[0]) or 0
+            relevant_count = cursor.fetchone()[0] or 0
             
             # If no user-specific relevance data, fall back to legacy is_relevant column
             if relevant_count == 0:
-                try:
-                    if self.db_type == 'sqlite':
-                        cursor.execute("""
-                            SELECT SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories
-                            FROM stories 
-                            WHERE date = ?
-                        """, (target_date,))
-                    else:  # PostgreSQL
-                        cursor.execute("""
-                            SELECT SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories
-                            FROM stories 
-                            WHERE date = %s
-                        """, (target_date,))
-                    result = cursor.fetchone()
-                    relevant_count = (result['relevant_stories'] if isinstance(result, dict) else result[0]) or 0
-                except:  # Column might not exist in new installations
-                    pass
+                cursor.execute("""
+                    SELECT SUM(CASE WHEN is_relevant THEN 1 ELSE 0 END) as relevant_stories
+                    FROM stories 
+                    WHERE date = ?
+                """, (target_date,))
+                relevant_count = cursor.fetchone()[0] or 0
             
             return {
-                'total_stories': total_stories,  # Non-cached stories only
-                'total_scraped': total_scraped,  # All scraped stories
+                'total_stories': row[1] or 0,  # Non-cached stories only
+                'total_scraped': row[0] or 0,  # All scraped stories
                 'relevant_stories': relevant_count,
-                'avg_points': round(avg_points, 1),
-                'total_comments': total_comments,
-                'cached_stories': cached_stories
+                'avg_points': round(row[2] or 0, 1),
+                'total_comments': row[3] or 0,
+                'cached_stories': row[4] or 0
             }
     
     def get_user_stats_by_date(self, user_id: str, target_date: str) -> Dict:
@@ -1117,20 +745,12 @@ class DatabaseManager:
     def create_user(self, email: str, name: Optional[str] = None) -> str:
         """Create a new user and return their UUID"""
         user_id = str(uuid.uuid4())
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    INSERT INTO users (user_id, email, name, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, email, name, datetime.now().isoformat()))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    INSERT INTO users (user_id, email, name, created_at)
-                    VALUES (%s, %s, %s, %s)
-                """, (user_id, email, name, datetime.now().isoformat()))
-            
+            cursor.execute("""
+                INSERT INTO users (user_id, email, name, created_at)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, email, name, datetime.now().isoformat()))
             conn.commit()
         return user_id
     
@@ -1315,67 +935,36 @@ class DatabaseManager:
     
     def get_user_interaction_stats(self, user_id: str, days: int = 30) -> Dict:
         """Get user interaction statistics for the last N days"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    SELECT 
-                        interaction_type,
-                        COUNT(*) as count,
-                        AVG(duration_seconds) as avg_duration
-                    FROM user_interactions 
-                    WHERE user_id = ? AND timestamp > datetime('now', '-{} days')
-                    GROUP BY interaction_type
-                """.format(days), (user_id,))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    SELECT 
-                        interaction_type,
-                        COUNT(*) as count,
-                        AVG(duration_seconds) as avg_duration
-                    FROM user_interactions 
-                    WHERE user_id = %s AND timestamp::timestamp > CURRENT_TIMESTAMP - INTERVAL '%s days'
-                    GROUP BY interaction_type
-                """, (user_id, days))
+            cursor.execute("""
+                SELECT 
+                    interaction_type,
+                    COUNT(*) as count,
+                    AVG(duration_seconds) as avg_duration
+                FROM user_interactions 
+                WHERE user_id = ? AND timestamp > datetime('now', '-{} days')
+                GROUP BY interaction_type
+            """.format(days), (user_id,))
             
             results = cursor.fetchall()
             stats = {}
             for row in results:
-                if isinstance(row, dict):
-                    stats[row['interaction_type']] = {
-                        'count': row['count'],
-                        'avg_duration': round(row['avg_duration'] or 0, 1)
-                    }
-                else:
-                    stats[row[0]] = {
-                        'count': row[1],
-                        'avg_duration': round(row[2] or 0, 1)
-                    }
+                stats[row[0]] = {
+                    'count': row[1],
+                    'avg_duration': round(row[2] or 0, 1)
+                }
             return stats
     
     def update_user_interest_weight(self, user_id: str, keyword: str, weight: float, category: str):
         """Update or insert a user-specific interest weight"""
-        with self.get_connection() as conn:
+        with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    INSERT OR REPLACE INTO user_interest_weights 
-                    (user_id, keyword, weight, category, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (user_id, keyword, weight, category, datetime.now().isoformat()))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    INSERT INTO user_interest_weights 
-                    (user_id, keyword, weight, category, updated_at)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (user_id, keyword) DO UPDATE SET
-                        weight = EXCLUDED.weight,
-                        category = EXCLUDED.category,
-                        updated_at = EXCLUDED.updated_at
-                """, (user_id, keyword, weight, category, datetime.now().isoformat()))
-            
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_interest_weights 
+                (user_id, keyword, weight, category, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, keyword, weight, category, datetime.now().isoformat()))
             conn.commit()
     
     def get_user_interest_weights(self, user_id: str) -> List[UserInterestWeight]:
@@ -1784,9 +1373,8 @@ def init_interest_weights(db: DatabaseManager):
 
 if __name__ == "__main__":
     # Test the database setup
-    print(f"Database URL: {os.getenv('DATABASE_URL', 'sqlite:///hn_scraper.db')}")
     db = DatabaseManager()
-    print(f"✅ Database initialized successfully (type: {db.db_type})")
+    print("✅ Database initialized successfully")
     
     # Initialize default interests
     init_interest_weights(db)
