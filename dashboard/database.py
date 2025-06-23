@@ -1289,26 +1289,42 @@ class DatabaseManager:
     
     def save_story_notes(self, user_id: str, story_id: int, notes: str):
         """Save or update personal notes for a story"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
             
-            cursor.execute("""
-                INSERT OR REPLACE INTO story_notes 
-                (user_id, story_id, notes, created_at, updated_at)
-                VALUES (?, ?, ?, 
-                    COALESCE((SELECT created_at FROM story_notes WHERE user_id = ? AND story_id = ?), ?),
-                    ?)
-            """, (user_id, story_id, notes, user_id, story_id, now, now))
+            if self.db_type == 'sqlite':
+                cursor.execute("""
+                    INSERT OR REPLACE INTO story_notes 
+                    (user_id, story_id, notes, created_at, updated_at)
+                    VALUES (?, ?, ?, 
+                        COALESCE((SELECT created_at FROM story_notes WHERE user_id = ? AND story_id = ?), ?),
+                        ?)
+                """, (user_id, story_id, notes, user_id, story_id, now, now))
+            else:  # PostgreSQL
+                cursor.execute("""
+                    INSERT INTO story_notes (user_id, story_id, notes, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id, story_id) DO UPDATE SET
+                    notes = EXCLUDED.notes,
+                    updated_at = EXCLUDED.updated_at
+                """, (user_id, story_id, notes, now, now))
+            
             conn.commit()
     
     def get_story_notes(self, user_id: str, story_id: int) -> Optional[str]:
         """Get personal notes for a story"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT notes FROM story_notes WHERE user_id = ? AND story_id = ?
-            """, (user_id, story_id))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute("""
+                    SELECT notes FROM story_notes WHERE user_id = ? AND story_id = ?
+                """, (user_id, story_id))
+            else:  # PostgreSQL
+                cursor.execute("""
+                    SELECT notes FROM story_notes WHERE user_id = %s AND story_id = %s
+                """, (user_id, story_id))
             
             result = cursor.fetchone()
             return result[0] if result else None
