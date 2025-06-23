@@ -621,23 +621,24 @@ class DatabaseManager:
         """Get all stories for a specific date"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            placeholder = self._get_placeholder()
             
             if self.db_type == 'sqlite':
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT id, date, rank, story_id, title, url, points, author, comments_count,
                            hn_discussion_url, article_summary, comments_analysis,
                            scraped_at, COALESCE(was_cached, 0) as was_cached, tags
                     FROM stories 
-                    WHERE date = ? 
+                    WHERE date = {placeholder} 
                     ORDER BY rank
                 """, (target_date,))
             else:  # PostgreSQL
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT id, date, rank, story_id, title, url, points, author, comments_count,
                            hn_discussion_url, article_summary, comments_analysis,
                            scraped_at, COALESCE(was_cached, false) as was_cached, tags
                     FROM stories 
-                    WHERE date = %s 
+                    WHERE date = {placeholder} 
                     ORDER BY rank
                 """, (target_date,))
             
@@ -698,14 +699,10 @@ class DatabaseManager:
         """Check if a story with the given HN story ID already exists in database"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = ?", (story_id,))
-                return cursor.fetchone()[0] > 0
-            else:  # PostgreSQL
-                cursor.execute("SELECT COUNT(*) FROM stories WHERE story_id = %s", (story_id,))
-                result = cursor.fetchone()
-                return result[0] > 0 if isinstance(result, tuple) else result['count'] > 0
+            placeholder = self._get_placeholder()
+            cursor.execute(f"SELECT COUNT(*) FROM stories WHERE story_id = {placeholder}", (story_id,))
+            result = cursor.fetchone()
+            return result[0] > 0 if isinstance(result, tuple) else result['count'] > 0
     
     def store_user_story_relevance(self, user_id: str, story_db_id: int, is_relevant: bool, 
                                  relevance_score: float, relevance_reasoning: str = None) -> None:
@@ -788,14 +785,14 @@ class DatabaseManager:
                            r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
                     FROM stories s
                     LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
-                    WHERE s.date = {placeholder} AND s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
+                    WHERE s.date = {placeholder} AND date(s.date) >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
                     ORDER BY s.rank
                 """, (user_id, target_date, user_id))
             else:  # PostgreSQL
                 cursor.execute(f"""
                     SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
                            s.comments_count, s.hn_discussion_url, s.article_summary, s.comments_analysis,
-                           s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags,
+                           s.scraped_at, COALESCE(s.was_cached, false) as was_cached, s.tags,
                            r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
                     FROM stories s
                     LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
@@ -1001,7 +998,7 @@ class DatabaseManager:
                 cursor.execute(f"""
                     SELECT DISTINCT s.date 
                     FROM stories s
-                    WHERE s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
+                    WHERE date(s.date) >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
                     ORDER BY s.date DESC
                 """, (user_id,))
             else:  # PostgreSQL
@@ -1113,16 +1110,29 @@ class DatabaseManager:
             
             # Get basic story stats
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT 
-                    COUNT(*) as total_scraped,
-                    SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
-                    AVG(points) as avg_points,
-                    SUM(comments_count) as total_comments,
-                    SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
-                FROM stories 
-                WHERE date = {placeholder}
-            """, (target_date,))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT 
+                        COUNT(*) as total_scraped,
+                        SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
+                        AVG(points) as avg_points,
+                        SUM(comments_count) as total_comments,
+                        SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
+                    FROM stories 
+                    WHERE date = {placeholder}
+                """, (target_date,))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT 
+                        COUNT(*) as total_scraped,
+                        SUM(CASE WHEN COALESCE(was_cached, false) = false THEN 1 ELSE 0 END) as total_stories,
+                        AVG(points) as avg_points,
+                        SUM(comments_count) as total_comments,
+                        SUM(CASE WHEN COALESCE(was_cached, false) = true THEN 1 ELSE 0 END) as cached_stories
+                    FROM stories 
+                    WHERE date = {placeholder}
+                """, (target_date,))
             
             row = cursor.fetchone()
             
@@ -1280,18 +1290,33 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
-                       s.author, s.comments_count, s.hn_discussion_url, 
-                       s.article_summary, s.comments_analysis, s.is_relevant, 
-                       s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
-                       COALESCE(s.was_cached, 0) as was_cached, s.tags, sn.notes
-                FROM stories s
-                JOIN user_interactions ui ON s.id = ui.story_id
-                LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
-                WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
-                ORDER BY ui.timestamp DESC
-            """, (user_id,))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
+                           s.author, s.comments_count, s.hn_discussion_url, 
+                           s.article_summary, s.comments_analysis, s.is_relevant, 
+                           s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
+                           COALESCE(s.was_cached, 0) as was_cached, s.tags, sn.notes
+                    FROM stories s
+                    JOIN user_interactions ui ON s.id = ui.story_id
+                    LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
+                    WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
+                    ORDER BY ui.timestamp DESC
+                """, (user_id,))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
+                           s.author, s.comments_count, s.hn_discussion_url, 
+                           s.article_summary, s.comments_analysis, s.is_relevant, 
+                           s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
+                           COALESCE(s.was_cached, false) as was_cached, s.tags, sn.notes
+                    FROM stories s
+                    JOIN user_interactions ui ON s.id = ui.story_id
+                    LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
+                    WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
+                    ORDER BY ui.timestamp DESC
+                """, (user_id,))
             
             saved_stories = []
             for row in cursor.fetchall():
@@ -1337,19 +1362,20 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
+            placeholder = self._get_placeholder()
             
             if self.db_type == 'sqlite':
-                cursor.execute("""
+                cursor.execute(f"""
                     INSERT OR REPLACE INTO story_notes 
                     (user_id, story_id, notes, created_at, updated_at)
-                    VALUES (?, ?, ?, 
-                        COALESCE((SELECT created_at FROM story_notes WHERE user_id = ? AND story_id = ?), ?),
-                        ?)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, 
+                        COALESCE((SELECT created_at FROM story_notes WHERE user_id = {placeholder} AND story_id = {placeholder}), {placeholder}),
+                        {placeholder})
                 """, (user_id, story_id, notes, user_id, story_id, now, now))
             else:  # PostgreSQL
-                cursor.execute("""
+                cursor.execute(f"""
                     INSERT INTO story_notes (user_id, story_id, notes, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
                     ON CONFLICT (user_id, story_id) DO UPDATE SET
                     notes = EXCLUDED.notes,
                     updated_at = EXCLUDED.updated_at
@@ -1361,15 +1387,10 @@ class DatabaseManager:
         """Get personal notes for a story"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("""
-                    SELECT notes FROM story_notes WHERE user_id = ? AND story_id = ?
-                """, (user_id, story_id))
-            else:  # PostgreSQL
-                cursor.execute("""
-                    SELECT notes FROM story_notes WHERE user_id = %s AND story_id = %s
-                """, (user_id, story_id))
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
+                SELECT notes FROM story_notes WHERE user_id = {placeholder} AND story_id = {placeholder}
+            """, (user_id, story_id))
             
             result = cursor.fetchone()
             return result[0] if result else None
@@ -1378,27 +1399,28 @@ class DatabaseManager:
         """Get user interaction statistics for the last N days"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            placeholder = self._get_placeholder()
             
             if self.db_type == 'sqlite':
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT 
                         interaction_type,
                         COUNT(*) as count,
                         AVG(duration_seconds) as avg_duration
                     FROM user_interactions 
-                    WHERE user_id = ? AND timestamp > datetime('now', '-{} days')
+                    WHERE user_id = {placeholder} AND timestamp > datetime('now', '-{days} days')
                     GROUP BY interaction_type
-                """.format(days), (user_id,))
+                """, (user_id,))
             else:  # PostgreSQL
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT 
                         interaction_type,
                         COUNT(*) as count,
                         AVG(duration_seconds) as avg_duration
                     FROM user_interactions 
-                    WHERE user_id = %s AND timestamp::timestamp > CURRENT_TIMESTAMP - INTERVAL '%s days'
+                    WHERE user_id = {placeholder} AND timestamp::timestamp > CURRENT_TIMESTAMP - INTERVAL '{days} days'
                     GROUP BY interaction_type
-                """, (user_id, days))
+                """, (user_id,))
             
             results = cursor.fetchall()
             stats = {}
@@ -1534,12 +1556,8 @@ class DatabaseManager:
         """Delete a global interest weight by ID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
-            if self.db_type == 'sqlite':
-                cursor.execute("DELETE FROM interest_weights WHERE id = ?", (interest_id,))
-            else:  # PostgreSQL
-                cursor.execute("DELETE FROM interest_weights WHERE id = %s", (interest_id,))
-            
+            placeholder = self._get_placeholder()
+            cursor.execute(f"DELETE FROM interest_weights WHERE id = {placeholder}", (interest_id,))
             conn.commit()
             return cursor.rowcount > 0  # Returns True if a row was deleted
     
@@ -1624,9 +1642,9 @@ class DatabaseManager:
                 cursor.execute(f"""
                     SELECT id, title, url, article_summary, comments_analysis, tags
                     FROM stories
-                    WHERE date >= CURRENT_DATE - INTERVAL '{limit_days} days'
+                    WHERE date::date >= CURRENT_DATE - INTERVAL %s
                     ORDER BY date DESC, rank ASC
-                """)
+                """, (f'{limit_days} days',))
             
             stories = cursor.fetchall()
             stats['total_stories'] = len(stories)
@@ -1783,16 +1801,29 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
-                       s.author, s.comments_count, s.hn_discussion_url, s.article_summary,
-                       s.comments_analysis, s.scraped_at, COALESCE(s.was_cached, 0), s.tags
-                FROM stories s
-                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
-                WHERE r.id IS NULL
-                ORDER BY s.date DESC, s.rank ASC
-                LIMIT {placeholder}
-            """, (user_id, limit))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
+                           s.author, s.comments_count, s.hn_discussion_url, s.article_summary,
+                           s.comments_analysis, s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags
+                    FROM stories s
+                    LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
+                    WHERE r.id IS NULL
+                    ORDER BY s.date DESC, s.rank ASC
+                    LIMIT {placeholder}
+                """, (user_id, limit))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
+                           s.author, s.comments_count, s.hn_discussion_url, s.article_summary,
+                           s.comments_analysis, s.scraped_at, COALESCE(s.was_cached, false) as was_cached, s.tags
+                    FROM stories s
+                    LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
+                    WHERE r.id IS NULL
+                    ORDER BY s.date DESC, s.rank ASC
+                    LIMIT {placeholder}
+                """, (user_id, limit))
             
             stories = []
             for row in cursor.fetchall():
