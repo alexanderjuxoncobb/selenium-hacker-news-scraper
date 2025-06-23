@@ -750,11 +750,12 @@ class DatabaseManager:
         """Get user-specific relevance for a story"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT id, user_id, story_id, is_relevant, relevance_score, 
                        relevance_reasoning, calculated_at
                 FROM user_story_relevance 
-                WHERE user_id = ? AND story_id = ?
+                WHERE user_id = {placeholder} AND story_id = {placeholder}
             """, (user_id, story_db_id))
             
             row = cursor.fetchone()
@@ -1088,7 +1089,8 @@ class DatabaseManager:
             cursor = conn.cursor()
             
             # Get basic story stats
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT 
                     COUNT(*) as total_scraped,
                     SUM(CASE WHEN COALESCE(was_cached, 0) = 0 THEN 1 ELSE 0 END) as total_stories,
@@ -1096,17 +1098,17 @@ class DatabaseManager:
                     SUM(comments_count) as total_comments,
                     SUM(CASE WHEN COALESCE(was_cached, 0) = 1 THEN 1 ELSE 0 END) as cached_stories
                 FROM stories 
-                WHERE date = ?
+                WHERE date = {placeholder}
             """, (target_date,))
             
             row = cursor.fetchone()
             
             # Get user-specific relevant stories count
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT COUNT(*) as relevant_stories
                 FROM user_story_relevance usr
                 JOIN stories s ON usr.story_id = s.id
-                WHERE s.date = ? AND usr.user_id = ? AND usr.is_relevant = 1
+                WHERE s.date = {placeholder} AND usr.user_id = {placeholder} AND usr.is_relevant = 1
             """, (target_date, user_id))
             
             relevant_count = cursor.fetchone()[0] or 0
@@ -1666,10 +1668,11 @@ class DatabaseManager:
         # Get stories from the start date onwards
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT id, title, url, article_summary, comments_analysis, tags
                 FROM stories
-                WHERE date >= ?
+                WHERE date >= {placeholder}
                 ORDER BY date DESC, rank ASC
             """, (start_date,))
             
@@ -1729,15 +1732,16 @@ class DatabaseManager:
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
                        s.author, s.comments_count, s.hn_discussion_url, s.article_summary,
                        s.comments_analysis, s.scraped_at, COALESCE(s.was_cached, 0), s.tags
                 FROM stories s
-                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = ?
+                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
                 WHERE r.id IS NULL
                 ORDER BY s.date DESC, s.rank ASC
-                LIMIT ?
+                LIMIT {placeholder}
             """, (user_id, limit))
             
             stories = []
@@ -1770,10 +1774,11 @@ class DatabaseManager:
         """Get user interests organized by category"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT keyword, category
                 FROM user_interest_weights
-                WHERE user_id = ?
+                WHERE user_id = {placeholder}
                 ORDER BY weight DESC, keyword
             """, (user_id,))
             
