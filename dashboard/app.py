@@ -924,7 +924,7 @@ async def admin_trigger_scrape(admin: str = Depends(get_current_admin)):
             try:
                 result = subprocess.run([
                     "python", "multi_user_scraper.py"
-                ], capture_output=True, text=True, cwd="/Users/zebcobb/repos/selenium-hacker-news-scraper")
+                ], capture_output=True, text=True, cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 print(f"Multi-user scrape completed with return code: {result.returncode}")
                 if result.stdout:
                     print(f"Output: {result.stdout}")
