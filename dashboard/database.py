@@ -779,16 +779,29 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
-                       s.comments_count, s.hn_discussion_url, s.article_summary, s.comments_analysis,
-                       s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags,
-                       r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
-                FROM stories s
-                LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
-                WHERE s.date = {placeholder} AND s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
-                ORDER BY s.rank
-            """, (user_id, target_date, user_id))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
+                           s.comments_count, s.hn_discussion_url, s.article_summary, s.comments_analysis,
+                           s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags,
+                           r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
+                    FROM stories s
+                    LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
+                    WHERE s.date = {placeholder} AND s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
+                    ORDER BY s.rank
+                """, (user_id, target_date, user_id))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
+                           s.comments_count, s.hn_discussion_url, s.article_summary, s.comments_analysis,
+                           s.scraped_at, COALESCE(s.was_cached, 0) as was_cached, s.tags,
+                           r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
+                    FROM stories s
+                    LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
+                    WHERE s.date = {placeholder} AND s.date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
+                    ORDER BY s.rank
+                """, (user_id, target_date, user_id))
             
             rows = cursor.fetchall()
             results = []
@@ -983,12 +996,22 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT DISTINCT s.date 
-                FROM stories s
-                WHERE s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
-                ORDER BY s.date DESC
-            """, (user_id,))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT DISTINCT s.date 
+                    FROM stories s
+                    WHERE s.date >= (SELECT date(created_at) FROM users WHERE user_id = {placeholder})
+                    ORDER BY s.date DESC
+                """, (user_id,))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT DISTINCT s.date 
+                    FROM stories s
+                    WHERE s.date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
+                    ORDER BY s.date DESC
+                """, (user_id,))
+            
             return [row[0] for row in cursor.fetchall()]
     
     def get_stats_by_date(self, target_date: str) -> Dict:
@@ -1580,12 +1603,22 @@ class DatabaseManager:
         # Get all recent stories (limit to last N days for performance)
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, title, url, article_summary, comments_analysis, tags
-                FROM stories
-                WHERE date >= date('now', '-' || ? || ' days')
-                ORDER BY date DESC, rank ASC
-            """, (limit_days,))
+            placeholder = self._get_placeholder()
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT id, title, url, article_summary, comments_analysis, tags
+                    FROM stories
+                    WHERE date >= date('now', '-' || {placeholder} || ' days')
+                    ORDER BY date DESC, rank ASC
+                """, (limit_days,))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT id, title, url, article_summary, comments_analysis, tags
+                    FROM stories
+                    WHERE date >= CURRENT_DATE - INTERVAL '{limit_days} days'
+                    ORDER BY date DESC, rank ASC
+                """)
             
             stories = cursor.fetchall()
             stats['total_stories'] = len(stories)
