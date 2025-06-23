@@ -968,6 +968,29 @@ async def health_check():
         "latest_date": available_dates[0] if available_dates else None
     }
 
+@app.get("/debug/database")
+async def debug_database():
+    """Debug database connection and data"""
+    try:
+        users = db.get_all_users()
+        stories = db.get_stories_by_date(date.today().strftime('%Y-%m-%d'))
+        
+        return {
+            "database_type": db.db_type,
+            "database_url": db.db_url[:50] + "..." if len(db.db_url) > 50 else db.db_url,
+            "users_count": len(users),
+            "stories_today": len(stories),
+            "users_sample": [{"email": u.email, "name": u.name, "user_id": u.user_id[:8]} for u in users[:5]],
+            "connection_working": True
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "database_type": getattr(db, 'db_type', 'unknown'),
+            "database_url": getattr(db, 'db_url', 'unknown')[:50] + "...",
+            "connection_working": False
+        }
+
 if __name__ == "__main__":
     # For development
     uvicorn.run(
