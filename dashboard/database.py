@@ -1295,11 +1295,14 @@ class DatabaseManager:
                 cursor.execute(f"""
                     SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
                            s.author, s.comments_count, s.hn_discussion_url, 
-                           s.article_summary, s.comments_analysis, s.is_relevant, 
-                           s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
+                           s.article_summary, s.comments_analysis,
+                           COALESCE(usr.is_relevant, 0) as is_relevant, 
+                           COALESCE(usr.relevance_score, 0.0) as relevance_score,
+                           s.scraped_at, ui.timestamp as saved_at,
                            COALESCE(s.was_cached, 0) as was_cached, s.tags, sn.notes
                     FROM stories s
                     JOIN user_interactions ui ON s.id = ui.story_id
+                    LEFT JOIN user_story_relevance usr ON s.id = usr.story_id AND usr.user_id = ui.user_id
                     LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
                     WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
                     ORDER BY ui.timestamp DESC
@@ -1308,11 +1311,14 @@ class DatabaseManager:
                 cursor.execute(f"""
                     SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
                            s.author, s.comments_count, s.hn_discussion_url, 
-                           s.article_summary, s.comments_analysis, s.is_relevant, 
-                           s.relevance_score, s.scraped_at, ui.timestamp as saved_at,
+                           s.article_summary, s.comments_analysis,
+                           COALESCE(usr.is_relevant, false) as is_relevant, 
+                           COALESCE(usr.relevance_score, 0.0) as relevance_score,
+                           s.scraped_at, ui.timestamp as saved_at,
                            COALESCE(s.was_cached, false) as was_cached, s.tags, sn.notes
                     FROM stories s
                     JOIN user_interactions ui ON s.id = ui.story_id
+                    LEFT JOIN user_story_relevance usr ON s.id = usr.story_id AND usr.user_id = ui.user_id
                     LEFT JOIN story_notes sn ON s.id = sn.story_id AND sn.user_id = ui.user_id
                     WHERE ui.user_id = {placeholder} AND ui.interaction_type = 'save'
                     ORDER BY ui.timestamp DESC
