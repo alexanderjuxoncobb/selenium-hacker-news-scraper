@@ -120,7 +120,7 @@ class DatabaseManager:
     def get_connection(self):
         """Get database connection based on type"""
         if self.db_type == 'sqlite':
-            conn = self.get_connection()
+            conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             try:
                 yield conn
@@ -585,7 +585,7 @@ class DatabaseManager:
                             """, (
                                 user_id,
                                 story_db_id,
-                                story.get('is_relevant', False),
+                                int(story.get('is_relevant', False)),  # Convert to int for SQLite
                                 story.get('relevance_score', 0.0),
                                 story.get('relevance_reasoning'),
                                 datetime.now().isoformat()
@@ -603,7 +603,7 @@ class DatabaseManager:
                             """, (
                                 user_id,
                                 story_db_id,
-                                story.get('is_relevant', False),
+                                story.get('is_relevant', False),  # Keep as boolean for PostgreSQL
                                 story.get('relevance_score', 0.0),
                                 story.get('relevance_reasoning'),
                                 datetime.now().isoformat()
@@ -1127,12 +1127,20 @@ class DatabaseManager:
             row = cursor.fetchone()
             
             # Get user-specific relevant stories count
-            cursor.execute(f"""
-                SELECT COUNT(*) as relevant_stories
-                FROM user_story_relevance usr
-                JOIN stories s ON usr.story_id = s.id
-                WHERE s.date = {placeholder} AND usr.user_id = {placeholder} AND usr.is_relevant = 1
-            """, (target_date, user_id))
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT COUNT(*) as relevant_stories
+                    FROM user_story_relevance usr
+                    JOIN stories s ON usr.story_id = s.id
+                    WHERE s.date = {placeholder} AND usr.user_id = {placeholder} AND usr.is_relevant = 1
+                """, (target_date, user_id))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT COUNT(*) as relevant_stories
+                    FROM user_story_relevance usr
+                    JOIN stories s ON usr.story_id = s.id
+                    WHERE s.date = {placeholder} AND usr.user_id = {placeholder} AND usr.is_relevant = true
+                """, (target_date, user_id))
             
             relevant_count = cursor.fetchone()[0] or 0
             
