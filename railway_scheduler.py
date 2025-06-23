@@ -23,12 +23,12 @@ def run_daily_scrape():
     print(f"🚀 Starting daily scrape at {current_time.strftime('%Y-%m-%d %H:%M:%S')} London time")
     
     try:
-        # Import and run the multi-user scraper
-        from multi_user_scraper import run_multi_user_scraping
+        # Import and run the enhanced scraper
+        from enhanced_scraper import main as run_enhanced_scraper
         
         # Run the scraper
-        print("📊 Running multi-user scraper...")
-        run_multi_user_scraping()
+        print("📊 Running enhanced scraper...")
+        run_enhanced_scraper()
         
         print("✅ Daily scrape completed successfully!")
         

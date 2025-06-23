@@ -23,11 +23,14 @@ from database import DatabaseManager, init_interest_weights
 
 # Import scheduler for Railway deployment
 try:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add parent directory
     from railway_scheduler import start_background_scheduler
     # Start the scheduler when running on Railway
-    if os.getenv('RAILWAY_ENVIRONMENT'):
+    if os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('DATABASE_URL', '').startswith('postgres'):
+        print("🔧 Starting background scheduler for Railway deployment...")
         start_background_scheduler()
-except ImportError:
+except ImportError as e:
+    print(f"ℹ️  Scheduler not available: {e}")
     pass  # Scheduler not available in development
 
 app = FastAPI(title="HN Scraper Dashboard", description="AI-Powered Hacker News Daily Digest")
