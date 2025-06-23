@@ -32,8 +32,13 @@ except ImportError:
 
 app = FastAPI(title="HN Scraper Dashboard", description="AI-Powered Hacker News Daily Digest")
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files (with error handling for Railway deployment)
+import os
+static_dir = "static"
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+else:
+    print(f"Warning: Static directory '{static_dir}' not found. Static files will not be served.")
 
 # Setup templates
 templates = Jinja2Templates(directory="templates")
