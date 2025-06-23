@@ -92,12 +92,7 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Home page - show setup instructions or redirect existing user"""
-    return templates.TemplateResponse("landing.html", {"request": request})
-
-@app.get("/setup", response_class=HTMLResponse)
-async def setup_form(request: Request):
-    """User setup form"""
+    """Home page - User setup form"""
     # Organized core topics
     topic_sections = {
         "Technology & Programming": [
@@ -120,7 +115,7 @@ async def setup_form(request: Request):
         "topic_sections": topic_sections
     })
 
-@app.post("/setup", response_class=HTMLResponse)
+@app.post("/", response_class=HTMLResponse)
 async def setup_submit(request: Request):
     """Process user setup form"""
     try:
