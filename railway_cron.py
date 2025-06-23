@@ -21,11 +21,11 @@ def run_daily_scrape():
     
     try:
         # Import and run the multi-user scraper
-        from multi_user_scraper import run_multi_user_scraping
+        from multi_user_scraper import main
         
         # Run the scraper
         print("📊 Running multi-user scraper...")
-        run_multi_user_scraping()
+        main()
         
         print("✅ Daily scrape completed successfully!")
         

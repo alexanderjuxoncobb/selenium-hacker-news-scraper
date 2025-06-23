@@ -61,7 +61,7 @@
                         <a href="/analytics/{{ user.user_id }}" class="nav-link {% block nav_analytics %}text-gray-500{% endblock %} hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-chart-line mr-1"></i>Analytics
                         </a>
-                        <a href="/admin/users" class="nav-link text-gray-500 hover:text-hn-orange px-3 py-2 text-sm font-medium">
+                        <a href="/admin/users" id="admin-link" class="nav-link text-gray-500 hover:text-hn-orange px-3 py-2 text-sm font-medium">
                             <i class="fas fa-users mr-1"></i>Admin
                         </a>
                         {% else %}
@@ -382,6 +382,100 @@
                 setTimeout(() => confirmButton.focus(), 100);
             });
         }
+
+        // Handle admin link authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminLink = document.getElementById('admin-link');
+            if (adminLink) {
+                adminLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const currentUrl = window.location.href;
+                    
+                    // Create a custom authentication form
+                    const authModal = document.createElement('div');
+                    authModal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 z-50';
+                    authModal.innerHTML = `
+                        <div class="flex items-center justify-center min-h-screen p-4">
+                            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                                <div class="p-6">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Admin Authentication</h3>
+                                    <form id="admin-auth-form">
+                                        <div class="mb-4">
+                                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                            <input type="text" id="username" name="username" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange">
+                                        </div>
+                                        <div class="mb-6">
+                                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                            <input type="password" id="password" name="password" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-hn-orange">
+                                        </div>
+                                        <div class="flex justify-end space-x-3">
+                                            <button type="button" id="auth-cancel" 
+                                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" 
+                                                class="px-4 py-2 text-sm font-medium text-white bg-hn-orange rounded-md hover:bg-orange-600">
+                                                Sign In
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(authModal);
+                    
+                    // Focus username field
+                    setTimeout(() => document.getElementById('username').focus(), 100);
+                    
+                    // Handle cancel
+                    document.getElementById('auth-cancel').addEventListener('click', function() {
+                        document.body.removeChild(authModal);
+                    });
+                    
+                    // Handle form submission
+                    document.getElementById('admin-auth-form').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const username = document.getElementById('username').value;
+                        const password = document.getElementById('password').value;
+                        
+                        // Create auth header
+                        const auth = btoa(username + ':' + password);
+                        
+                        // Try to access admin page with credentials
+                        fetch('/admin/users', {
+                            headers: {
+                                'Authorization': 'Basic ' + auth
+                            }
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                // Success - navigate to admin page
+                                window.location.href = '/admin/users';
+                            } else {
+                                // Failed - show error
+                                document.body.removeChild(authModal);
+                                showToast('Invalid admin credentials. Please try again.', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            document.body.removeChild(authModal);
+                            showToast('Authentication failed. Please try again.', 'error');
+                        });
+                    });
+                    
+                    // Close on background click
+                    authModal.addEventListener('click', function(e) {
+                        if (e.target === authModal) {
+                            document.body.removeChild(authModal);
+                        }
+                    });
+                });
+            }
+        });
     </script>
 </body>
 </html>

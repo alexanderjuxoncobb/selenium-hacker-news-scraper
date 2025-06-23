@@ -4,10 +4,11 @@ FastAPI Web Dashboard for HN Scraper
 """
 
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.exceptions import HTTPException
 from datetime import datetime, date, timedelta
 import json
 from typing import Optional
@@ -46,17 +47,57 @@ else:
 # Setup templates
 templates = Jinja2Templates(directory="templates")
 
+# Custom exception handler for authentication errors
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with custom error pages for admin routes"""
+    # Check if this is an authentication error on admin routes
+    if exc.status_code == 401 and request.url.path.startswith("/admin"):
+        # Get the referrer URL to return to
+        referer = request.headers.get("referer", "/")
+        
+        # If it's an API request, return JSON
+        if request.headers.get("accept", "").startswith("application/json"):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail}
+            )
+        
+        # Otherwise, return HTML error page
+        return templates.TemplateResponse(
+            "auth_error.html",
+            {
+                "request": request,
+                "error_message": "Invalid admin credentials. Please try again.",
+                "return_url": referer
+            },
+            status_code=200  # Return 200 to prevent browser auth popup
+        )
+    
+    # For other errors, return default JSON response
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
 # Initialize database
 # This will use DATABASE_URL from environment if set, otherwise defaults to SQLite
 db = DatabaseManager()
 
 # Admin authentication
-security = HTTPBasic()
+security = HTTPBasic(auto_error=False)  # Don't auto-raise 401
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "hn_admin_2025")  # Change this in production!
 
 def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify admin credentials"""
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
     if not (correct_username and correct_password):

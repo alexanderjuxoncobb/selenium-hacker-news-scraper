@@ -25,7 +25,11 @@ class EmailNotifier:
         self.email_user = os.getenv('EMAIL_USER')
         self.email_password = os.getenv('EMAIL_APP_PASSWORD')
         self.recipient_email = os.getenv('RECIPIENT_EMAIL')
-        self.dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', 'http://localhost:8000')
+        self.dashboard_base_url = os.getenv('DASHBOARD_BASE_URL')
+        if not self.dashboard_base_url:
+            # For local development, use localhost
+            self.dashboard_base_url = 'http://localhost:8000'
+            print("⚠️  DASHBOARD_BASE_URL not set, using localhost:8000 for development")
         
         # Validate configuration
         if not all([self.email_user, self.email_password, self.recipient_email]):
@@ -407,7 +411,11 @@ class ResendEmailNotifier(EmailNotifier):
         # Email configuration
         self.email_user = os.getenv('EMAIL_USER', 'digest@yourdomain.com')
         self.recipient_email = os.getenv('RECIPIENT_EMAIL')
-        self.dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', 'http://localhost:8000')
+        self.dashboard_base_url = os.getenv('DASHBOARD_BASE_URL')
+        if not self.dashboard_base_url:
+            # For local development, use localhost
+            self.dashboard_base_url = 'http://localhost:8000'
+            print("⚠️  DASHBOARD_BASE_URL not set, using localhost:8000 for development")
         
         # Validate configuration
         if not self.recipient_email:
