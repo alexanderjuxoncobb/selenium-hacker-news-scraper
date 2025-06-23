@@ -799,7 +799,7 @@ class DatabaseManager:
                            r.id as rel_id, r.is_relevant, r.relevance_score, r.relevance_reasoning, r.calculated_at
                     FROM stories s
                     LEFT JOIN user_story_relevance r ON s.id = r.story_id AND r.user_id = {placeholder}
-                    WHERE s.date = {placeholder} AND s.date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
+                    WHERE s.date = {placeholder} AND s.date::date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
                     ORDER BY s.rank
                 """, (user_id, target_date, user_id))
             
@@ -1008,7 +1008,7 @@ class DatabaseManager:
                 cursor.execute(f"""
                     SELECT DISTINCT s.date 
                     FROM stories s
-                    WHERE s.date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
+                    WHERE s.date::date >= (SELECT created_at::date FROM users WHERE user_id = {placeholder})
                     ORDER BY s.date DESC
                 """, (user_id,))
             
@@ -1710,12 +1710,21 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             placeholder = self._get_placeholder()
-            cursor.execute(f"""
-                SELECT id, title, url, article_summary, comments_analysis, tags
-                FROM stories
-                WHERE date >= {placeholder}
-                ORDER BY date DESC, rank ASC
-            """, (start_date,))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute(f"""
+                    SELECT id, title, url, article_summary, comments_analysis, tags
+                    FROM stories
+                    WHERE date >= {placeholder}
+                    ORDER BY date DESC, rank ASC
+                """, (start_date,))
+            else:  # PostgreSQL
+                cursor.execute(f"""
+                    SELECT id, title, url, article_summary, comments_analysis, tags
+                    FROM stories
+                    WHERE date::date >= {placeholder}::date
+                    ORDER BY date DESC, rank ASC
+                """, (start_date,))
             
             stories = cursor.fetchall()
             stats['total_stories'] = len(stories)
