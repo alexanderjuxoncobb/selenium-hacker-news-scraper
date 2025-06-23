@@ -112,11 +112,15 @@ class DatabaseManager:
         else:
             raise ValueError(f"Unsupported database URL: {db_url}")
     
+    def _get_placeholder(self) -> str:
+        """Get the correct parameter placeholder for the database type"""
+        return '?' if self.db_type == 'sqlite' else '%s'
+    
     @contextmanager
     def get_connection(self):
         """Get database connection based on type"""
         if self.db_type == 'sqlite':
-            conn = sqlite3.connect(self.db_path)
+            conn = self.get_connection()
             conn.row_factory = sqlite3.Row
             try:
                 yield conn
@@ -744,7 +748,7 @@ class DatabaseManager:
     
     def get_user_story_relevance(self, user_id: str, story_db_id: int) -> Optional[UserStoryRelevance]:
         """Get user-specific relevance for a story"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, user_id, story_id, is_relevant, relevance_score, 
@@ -771,7 +775,7 @@ class DatabaseManager:
             if target_date < signup_date:
                 return []  # User cannot access stories before their signup date
         
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, s.author, 
@@ -974,7 +978,7 @@ class DatabaseManager:
     
     def get_available_dates_for_user(self, user_id: str) -> List[str]:
         """Get all dates that have scraped data and are accessible to the user (from signup date onwards)"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT DISTINCT s.date 
@@ -1078,7 +1082,7 @@ class DatabaseManager:
     
     def get_user_stats_by_date(self, user_id: str, target_date: str) -> Dict:
         """Get user-specific statistics for a date"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             
             # Get basic story stats
@@ -1136,7 +1140,7 @@ class DatabaseManager:
     
     def get_user(self, user_id: str) -> Optional[User]:
         """Get user by UUID"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, user_id, email, name, created_at, last_active_at
@@ -1153,7 +1157,7 @@ class DatabaseManager:
     
     def update_user_activity(self, user_id: str):
         """Update user's last active timestamp"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE users SET last_active_at = ? WHERE user_id = ?
@@ -1162,7 +1166,7 @@ class DatabaseManager:
     
     def get_all_users(self) -> List[User]:
         """Get all users"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, user_id, email, name, created_at, last_active_at
@@ -1177,7 +1181,7 @@ class DatabaseManager:
 
     def log_interaction(self, user_id: str, story_id: int, interaction_type: str, duration_seconds: Optional[int] = None):
         """Log a user interaction with a story"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             
             # For rating interactions (thumbs_up/thumbs_down), remove the opposite rating first
@@ -1203,7 +1207,7 @@ class DatabaseManager:
     
     def get_story_interactions(self, user_id: str, story_id: int) -> List[Dict]:
         """Get all interactions for a specific story by a specific user"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT interaction_type, timestamp, duration_seconds
@@ -1223,7 +1227,7 @@ class DatabaseManager:
     
     def remove_interaction(self, user_id: str, story_id: int, interaction_type: str):
         """Remove a specific interaction"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 DELETE FROM user_interactions 
@@ -1233,7 +1237,7 @@ class DatabaseManager:
     
     def get_saved_stories(self, user_id: str) -> List[Dict]:
         """Get all saved stories for a specific user, ordered by save date"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT DISTINCT s.id, s.date, s.rank, s.title, s.url, s.points, 
@@ -1396,7 +1400,7 @@ class DatabaseManager:
     
     def get_user_interest_weights(self, user_id: str) -> List[UserInterestWeight]:
         """Get all interest weights for a specific user"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, user_id, keyword, weight, category, updated_at
@@ -1415,7 +1419,7 @@ class DatabaseManager:
     
     def delete_user_interest_weight(self, user_id: str, interest_id: int):
         """Delete a user-specific interest weight by ID"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 DELETE FROM user_interest_weights WHERE user_id = ? AND id = ?
@@ -1425,7 +1429,7 @@ class DatabaseManager:
     
     def copy_default_interests_to_user(self, user_id: str):
         """Copy default interest weights to a new user"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO user_interest_weights (user_id, keyword, weight, category, updated_at)
@@ -1437,7 +1441,7 @@ class DatabaseManager:
     # Keep original methods for backward compatibility and default templates
     def update_interest_weight(self, keyword: str, weight: float, category: str):
         """Update or insert a global interest weight (for default templates)"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT OR REPLACE INTO interest_weights 
@@ -1448,7 +1452,7 @@ class DatabaseManager:
     
     def get_interest_weights(self) -> List[InterestWeight]:
         """Get all global interest weights"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, keyword, weight, category, updated_at
@@ -1466,11 +1470,14 @@ class DatabaseManager:
     
     def delete_interest_weight(self, interest_id: int):
         """Delete a global interest weight by ID"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                DELETE FROM interest_weights WHERE id = ?
-            """, (interest_id,))
+            
+            if self.db_type == 'sqlite':
+                cursor.execute("DELETE FROM interest_weights WHERE id = ?", (interest_id,))
+            else:  # PostgreSQL
+                cursor.execute("DELETE FROM interest_weights WHERE id = %s", (interest_id,))
+            
             conn.commit()
             return cursor.rowcount > 0  # Returns True if a row was deleted
     
@@ -1540,7 +1547,7 @@ class DatabaseManager:
         ai_pipeline = CostOptimizedAI()
         
         # Get all recent stories (limit to last N days for performance)
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, title, url, article_summary, comments_analysis, tags
@@ -1628,7 +1635,7 @@ class DatabaseManager:
         ai_pipeline = CostOptimizedAI()
         
         # Get stories from the start date onwards
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, title, url, article_summary, comments_analysis, tags
@@ -1691,7 +1698,7 @@ class DatabaseManager:
         Get recent stories that don't have relevance calculated for this user.
         Used for on-demand processing.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT s.id, s.date, s.rank, s.story_id, s.title, s.url, s.points, 
@@ -1732,7 +1739,7 @@ class DatabaseManager:
 
     def get_user_interests_by_category(self, user_id: str) -> Dict[str, List[str]]:
         """Get user interests organized by category"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT keyword, category
