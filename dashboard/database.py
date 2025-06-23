@@ -1235,9 +1235,10 @@ class DatabaseManager:
         """Remove a specific interaction"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 DELETE FROM user_interactions 
-                WHERE user_id = ? AND story_id = ? AND interaction_type = ?
+                WHERE user_id = {placeholder} AND story_id = {placeholder} AND interaction_type = {placeholder}
             """, (user_id, story_id, interaction_type))
             conn.commit()
     
