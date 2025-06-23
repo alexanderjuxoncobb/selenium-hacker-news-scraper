@@ -21,6 +21,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add parent directory
 from database import DatabaseManager, init_interest_weights
 
+# Import scheduler for Railway deployment
+try:
+    from railway_scheduler import start_background_scheduler
+    # Start the scheduler when running on Railway
+    if os.getenv('RAILWAY_ENVIRONMENT'):
+        start_background_scheduler()
+except ImportError:
+    pass  # Scheduler not available in development
+
 app = FastAPI(title="HN Scraper Dashboard", description="AI-Powered Hacker News Daily Digest")
 
 # Mount static files
