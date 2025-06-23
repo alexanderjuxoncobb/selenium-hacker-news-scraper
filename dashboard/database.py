@@ -1402,10 +1402,11 @@ class DatabaseManager:
         """Get all interest weights for a specific user"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
                 SELECT id, user_id, keyword, weight, category, updated_at
                 FROM user_interest_weights 
-                WHERE user_id = ?
+                WHERE user_id = {placeholder}
                 ORDER BY weight DESC, keyword
             """, (user_id,))
             
@@ -1421,8 +1422,9 @@ class DatabaseManager:
         """Delete a user-specific interest weight by ID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                DELETE FROM user_interest_weights WHERE user_id = ? AND id = ?
+            placeholder = self._get_placeholder()
+            cursor.execute(f"""
+                DELETE FROM user_interest_weights WHERE user_id = {placeholder} AND id = {placeholder}
             """, (user_id, interest_id))
             conn.commit()
             return cursor.rowcount > 0  # Returns True if a row was deleted
@@ -1431,11 +1433,20 @@ class DatabaseManager:
         """Copy default interest weights to a new user"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO user_interest_weights (user_id, keyword, weight, category, updated_at)
-                SELECT ?, keyword, weight, category, ?
-                FROM interest_weights
-            """, (user_id, datetime.now().isoformat()))
+            placeholder = self._get_placeholder()
+            
+            if self.db_type == 'sqlite':
+                cursor.execute("""
+                    INSERT INTO user_interest_weights (user_id, keyword, weight, category, updated_at)
+                    SELECT ?, keyword, weight, category, ?
+                    FROM interest_weights
+                """, (user_id, datetime.now().isoformat()))
+            else:  # PostgreSQL
+                cursor.execute("""
+                    INSERT INTO user_interest_weights (user_id, keyword, weight, category, updated_at)
+                    SELECT %s, keyword, weight, category, %s
+                    FROM interest_weights
+                """, (user_id, datetime.now().isoformat()))
             conn.commit()
 
     # Keep original methods for backward compatibility and default templates
