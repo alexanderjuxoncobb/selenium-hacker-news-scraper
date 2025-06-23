@@ -31,15 +31,17 @@ class InterestLearner:
             cursor = conn.cursor()
             
             # Get all interactions with story details from last N days
+            # Note: relevance_score now comes from user_story_relevance table in multi-user schema
             cursor.execute("""
                 SELECT 
                     ui.interaction_type,
                     ui.timestamp,
                     s.title,
                     s.url,
-                    s.relevance_score
+                    COALESCE(usr.relevance_score, 0.0) as relevance_score
                 FROM user_interactions ui
                 JOIN stories s ON ui.story_id = s.id
+                LEFT JOIN user_story_relevance usr ON s.id = usr.story_id AND ui.user_id = usr.user_id
                 WHERE ui.interaction_type IN ('thumbs_up', 'thumbs_down')
                 AND ui.timestamp > datetime('now', '-{} days')
                 ORDER BY ui.timestamp DESC

@@ -905,7 +905,7 @@ async def debug_user_relevance(user_id: str, target_date: str):
                 "title": story.title,
                 "tags": story.tags,
                 "is_relevant": is_relevant,
-                "global_relevance": story.is_relevant
+                "global_relevance": getattr(story, 'is_relevant', None)  # May not exist in multi-user schema
             })
         
         return {
