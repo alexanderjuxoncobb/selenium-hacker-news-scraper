@@ -23,12 +23,12 @@ def run_daily_scrape():
     print(f"🚀 Starting daily scrape at {current_time.strftime('%Y-%m-%d %H:%M:%S')} London time")
     
     try:
-        # Import and run the enhanced scraper
-        from enhanced_scraper import main as run_enhanced_scraper
+        # Import and run the multi-user scraper
+        from multi_user_scraper import main as run_multi_user_scraper
         
-        # Run the scraper
-        print("📊 Running enhanced scraper...")
-        run_enhanced_scraper()
+        # Run the multi-user scraper
+        print("📊 Running multi-user scraper...")
+        run_multi_user_scraper()
         
         print("✅ Daily scrape completed successfully!")
         
@@ -39,10 +39,10 @@ def run_daily_scrape():
 
 def run_scheduler():
     """Run the scheduler in a separate thread"""
-    # Schedule the job for 8:30 AM London time
-    schedule.every().day.at("08:30").do(run_daily_scrape)
+    # Schedule the job for 2:05 PM London time (13:05 UTC) - TESTING
+    schedule.every().day.at("13:05").do(run_daily_scrape)
     
-    print("📅 Scheduler started - Daily scrape at 8:30 AM London time")
+    print("📅 Scheduler started - Daily scrape at 2:05 PM London time (13:05 UTC) - TESTING")
     print(f"Current time: {datetime.now(pytz.timezone('Europe/London')).strftime('%Y-%m-%d %H:%M:%S')} London")
     
     # Run the scheduler
