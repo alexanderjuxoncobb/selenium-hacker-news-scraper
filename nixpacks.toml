@@ -1,5 +1,0 @@
-[phases.setup]
-nixPkgs = ["chromium", "chromedriver"]
-
-[start]
-cmd = "cd dashboard && uvicorn app:app --host 0.0.0.0 --port $PORT"
