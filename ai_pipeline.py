@@ -26,17 +26,7 @@ class CostOptimizedAI:
         if not api_key:
             raise ValueError("OpenAI API key is required")
         
-        # Clear any proxy environment variables that might interfere with OpenAI client
-        import httpx
-        try:
-            self.openai_client = OpenAI(
-                api_key=api_key,
-                http_client=httpx.Client(proxies=None)  # Explicitly disable proxies
-            )
-        except Exception as e:
-            # Fallback to basic initialization if httpx approach fails
-            print(f"⚠️  Falling back to basic OpenAI client due to: {e}")
-            self.openai_client = OpenAI(api_key=api_key)
+        self.openai_client = OpenAI(api_key=api_key)
         
         # Initialize local embedding model (lightweight and fast)
         print("🔄 Loading local embedding model...")
