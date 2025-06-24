@@ -51,7 +51,25 @@ class EnhancedHackerNewsScraper:
             chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+        
+        # Railway-specific: Set Chrome binary path if in production
+        import os
+        import glob
+        if os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('DATABASE_URL', '').startswith('postgres'):
+            # Try to find chromium binary in Railway
+            chromium_paths = glob.glob("/nix/store/*/bin/chromium")
+            if chromium_paths:
+                chrome_options.binary_location = chromium_paths[0]
+                print(f"Using Railway chromium: {chromium_paths[0]}")
+            else:
+                print("Warning: Could not find chromium binary in Railway")
         
         # Initialize Chrome driver
         try:
@@ -809,9 +827,10 @@ class EnhancedHackerNewsScraper:
 
 def main():
     """Main function to run enhanced daily scraping with email notification"""
-    scraper = EnhancedHackerNewsScraper()
+    scraper = None
     
     try:
+        scraper = EnhancedHackerNewsScraper()
         # Process daily stories
         daily_data = scraper.process_daily_stories()
         
@@ -853,14 +872,16 @@ def main():
     except Exception as e:
         print(f"❌ Error during enhanced scraping: {str(e)}")
     finally:
-        scraper.close()
+        if scraper is not None:
+            scraper.close()
 
 def test_enhanced_scraper():
     """Test function with 3 stories"""
     print("🧪 Testing enhanced scraper with 3 stories...")
-    scraper = EnhancedHackerNewsScraper()
+    scraper = None
     
     try:
+        scraper = EnhancedHackerNewsScraper()
         stories = scraper.scrape_top_stories(3)
         
         processed_stories = []
@@ -896,7 +917,8 @@ def test_enhanced_scraper():
     except Exception as e:
         print(f"❌ Error during test: {str(e)}")
     finally:
-        scraper.close()
+        if scraper is not None:
+            scraper.close()
 
 if __name__ == "__main__":
     import sys

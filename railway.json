@@ -9,7 +9,7 @@
     "restartPolicyMaxRetries": 10
   },
   "cron": {
-    "schedule": "30 8 * * *",
+    "schedule": "03 12 * * *",
     "command": "python railway_cron.py"
   }
 }

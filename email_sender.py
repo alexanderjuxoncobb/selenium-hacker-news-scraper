@@ -417,9 +417,9 @@ class ResendEmailNotifier(EmailNotifier):
             self.dashboard_base_url = 'http://localhost:8000'
             print("⚠️  DASHBOARD_BASE_URL not set, using localhost:8000 for development")
         
-        # Validate configuration
+        # Validate configuration (RECIPIENT_EMAIL not required for multi-user mode)
         if not self.recipient_email:
-            raise ValueError("Missing RECIPIENT_EMAIL in your .env file")
+            print("⚠️  RECIPIENT_EMAIL not set - only multi-user emails will work")
     
     def send_email(self, message: MIMEMultipart, recipient_email: Optional[str] = None) -> bool:
         """Send email using Resend API"""

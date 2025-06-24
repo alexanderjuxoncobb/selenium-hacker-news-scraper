@@ -1,0 +1,24 @@
+[phases.setup]
+nixPkgs = ["chromium", "chromedriver"]
+aptPkgs = [
+    "libglib2.0-0",
+    "libnss3", 
+    "libgconf-2-4",
+    "libfontconfig1",
+    "libxss1",
+    "libgbm1",
+    "libasound2",
+    "libatk1.0-0",
+    "libatk-bridge2.0-0",
+    "libcups2",
+    "libdrm2",
+    "libxkbcommon0",
+    "libxcomposite1",
+    "libxdamage1",
+    "libxfixes3",
+    "libxrandr2",
+    "libpango-1.0-0"
+]
+
+[start]
+cmd = "cd dashboard && uvicorn app:app --host 0.0.0.0 --port $PORT"

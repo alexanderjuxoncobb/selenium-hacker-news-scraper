@@ -195,7 +195,7 @@ class CostOptimizedAI:
                 best_category = category
         
         # Threshold for relevance (tunable)
-        relevance_threshold = 0.20  # Lowered threshold to catch technical content like TPUs that relate to hardware
+        relevance_threshold = 0.25  # Balanced threshold for technical content
         is_relevant = max_similarity > relevance_threshold
         
         reasoning = f"Best match: '{best_match}' ({best_category}) - similarity: {max_similarity:.3f}"
@@ -218,7 +218,7 @@ class CostOptimizedAI:
         
         # Only use AI for uncertain cases (0.3-0.5 similarity range)
         if local_score < 0.3 or local_score > 0.5:
-            return local_score > 0.35  # Use local decision
+            return local_score > 0.25  # Use local decision with correct threshold
         
         try:
             # Build interest description from user interests or defaults

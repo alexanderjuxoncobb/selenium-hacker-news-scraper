@@ -104,6 +104,9 @@ def main():
     print("🌟 Starting Multi-User Enhanced Hacker News Scraper")
     print("=" * 60)
     
+    # Initialize scraper to None to avoid UnboundLocalError
+    scraper = None
+    
     try:
         # Initialize components
         print("🔧 Initializing components...")
@@ -131,6 +134,9 @@ def main():
         # Send personalized emails
         print("\n📧 Sending personalized email digests...")
         users_digest_data = overall_summary.get('users_digest_data', [])
+        
+        # Initialize email_results with default values
+        email_results = {'emails_sent': 0, 'emails_failed': 0, 'failed_users': []}
         
         if users_digest_data:
             email_results = email_notifier.send_multi_user_digests(users_digest_data)
@@ -168,9 +174,10 @@ def main():
         traceback.print_exc()
     
     finally:
-        # Clean up
+        # Clean up - only close scraper if it was initialized
         print("\n🔒 Cleaning up...")
-        scraper.close()
+        if scraper is not None:
+            scraper.close()
         print("✅ Multi-user scraper finished")
 
 if __name__ == "__main__":
