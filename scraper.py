@@ -31,7 +31,18 @@ class HackerNewsScraper:
         api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if not api_key:
             raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY in .env file or pass as parameter.")
-        self.openai_client = OpenAI(api_key=api_key)
+        
+        # Clear any proxy environment variables that might interfere with OpenAI client
+        import httpx
+        try:
+            self.openai_client = OpenAI(
+                api_key=api_key,
+                http_client=httpx.Client(proxies=None)  # Explicitly disable proxies
+            )
+        except Exception as e:
+            # Fallback to basic initialization if httpx approach fails
+            print(f"⚠️  Falling back to basic OpenAI client due to: {e}")
+            self.openai_client = OpenAI(api_key=api_key)
         
         # User interests for AI filtering
         self.user_interests = {

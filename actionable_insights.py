@@ -21,7 +21,17 @@ class ActionableInsightsAnalyzer:
         if not api_key:
             raise ValueError("OpenAI API key required for insights analysis")
         
-        self.openai_client = OpenAI(api_key=api_key)
+        # Clear any proxy environment variables that might interfere with OpenAI client
+        import httpx
+        try:
+            self.openai_client = OpenAI(
+                api_key=api_key,
+                http_client=httpx.Client(proxies=None)  # Explicitly disable proxies
+            )
+        except Exception as e:
+            # Fallback to basic initialization if httpx approach fails
+            print(f"⚠️  Falling back to basic OpenAI client due to: {e}")
+            self.openai_client = OpenAI(api_key=api_key)
         
         # Categories for actionable insights
         self.insight_categories = {
