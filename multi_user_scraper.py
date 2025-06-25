@@ -83,11 +83,12 @@ def store_multi_user_results(db: DatabaseManager, overall_summary: Dict):
                             break
                     
                     if matching_story:
+                        # Convert numpy types to Python types to prevent SQLite adapter errors
                         db.store_user_story_relevance(
                             user_id=user_id,
                             story_db_id=matching_story.id,
-                            is_relevant=story.get('is_relevant', False),
-                            relevance_score=story.get('relevance_score', 0.0),
+                            is_relevant=bool(story.get('is_relevant', False)),
+                            relevance_score=float(story.get('relevance_score', 0.0)),
                             relevance_reasoning=story.get('relevance_reasoning')
                         )
                         relevance_count += 1

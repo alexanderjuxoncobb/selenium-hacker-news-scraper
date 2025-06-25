@@ -228,7 +228,8 @@ class EnhancedHackerNewsScraper:
         story_data.update({
             "relevance_score": float(confidence_score),  # Convert numpy float32 to Python float
             "relevance_reasoning": reasoning,
-            "ai_refined": bool(0.3 <= confidence_score <= 0.5)  # Ensure Python bool
+            "ai_refined": bool(0.3 <= confidence_score <= 0.5),  # Ensure Python bool
+            "is_relevant": bool(is_relevant)  # Convert numpy.bool_ to Python bool to prevent SQLite adapter errors
         })
         
         return is_relevant

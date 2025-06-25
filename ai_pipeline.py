@@ -184,14 +184,16 @@ class CostOptimizedAI:
         # Compare against all interest categories
         for category, data in interests_to_use.items():
             similarities = cosine_similarity(story_embedding, data['embeddings'])[0]
-            max_sim_in_category = np.max(similarities)
+            # Convert numpy types to Python types to prevent SQLite adapter errors
+            max_sim_in_category = float(np.max(similarities))
             
             # Weight the similarity by category importance
             weighted_similarity = max_sim_in_category * data['weight']
             
             if weighted_similarity > max_similarity:
                 max_similarity = weighted_similarity
-                best_match_idx = np.argmax(similarities)
+                # Convert numpy int to Python int to prevent SQLite adapter errors
+                best_match_idx = int(np.argmax(similarities))
                 best_match = data['keywords'][best_match_idx]
                 best_category = category
         
