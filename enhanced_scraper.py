@@ -59,34 +59,28 @@ class EnhancedHackerNewsScraper:
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
         
-        # Initialize Chrome driver - try Browserless first, fallback to local
+        # Initialize Chrome driver - try Selenium Grid first, fallback to local
         import os
-        browserless_endpoint = os.getenv('BROWSER_WEBDRIVER_ENDPOINT')
-        browserless_token = os.getenv('BROWSER_TOKEN')
+        selenium_grid_url = os.getenv('SELENIUM_GRID_URL')
         
-        if browserless_endpoint and browserless_token:
-            # Use Railway Browserless service (preferred for production)
-            print("🌐 Using Railway Browserless service...")
-            print(f"📍 Endpoint: {browserless_endpoint}")
-            print(f"🔑 Token: {browserless_token[:10]}...") # Show first 10 chars for debugging
+        if selenium_grid_url:
+            # Use Railway Selenium Grid (preferred for production)
+            print("🌐 Using Railway Selenium Grid...")
+            print(f"📍 Grid URL: {selenium_grid_url}")
             
-            # Fix endpoint for Browserless v2
-            if '/webdriver' in browserless_endpoint and 'chrome/webdriver' not in browserless_endpoint:
-                # Adjust endpoint for Browserless v2
-                browserless_endpoint = browserless_endpoint.replace('/webdriver', '/chrome/webdriver')
-                print(f"🔄 Adjusted endpoint for v2: {browserless_endpoint}")
+            # Ensure proper WebDriver endpoint
+            if not selenium_grid_url.endswith('/wd/hub'):
+                selenium_grid_url = f"{selenium_grid_url}/wd/hub"
+                print(f"🔧 Adjusted URL: {selenium_grid_url}")
             
-            # Support both Browserless and standard Selenium Grid
-            if 'browserless' in browserless_endpoint:
-                chrome_options.set_capability('browserless:token', browserless_token)
             try:
                 self.driver = webdriver.Remote(
-                    command_executor=browserless_endpoint,
+                    command_executor=selenium_grid_url,
                     options=chrome_options
                 )
-                print("✅ Connected to Browserless service")
+                print("✅ Connected to Selenium Grid")
             except Exception as e:
-                print(f"⚠️  Browserless connection failed: {e}")
+                print(f"⚠️  Selenium Grid connection failed: {e}")
                 print("🔄 Falling back to local Chrome...")
                 self.driver = self._setup_local_chrome(chrome_options)
         else:
