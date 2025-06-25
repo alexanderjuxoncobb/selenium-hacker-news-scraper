@@ -197,7 +197,8 @@ class CostOptimizedAI:
         
         # Threshold for relevance (tunable)
         relevance_threshold = 0.25  # Balanced threshold for technical content
-        is_relevant = max_similarity > relevance_threshold
+        # Convert numpy.bool_ to Python bool to prevent SQLite adapter errors
+        is_relevant = bool(max_similarity > relevance_threshold)
         
         reasoning = f"Best match: '{best_match}' ({best_category}) - similarity: {max_similarity:.3f}"
         
@@ -736,19 +737,28 @@ class CostOptimizedAI:
         
         return interest_embeddings
     
-    def _build_interest_description(self, user_interests: Dict) -> str:
+    def _build_interest_description(self, user_interests) -> str:
         """Build a natural language description of user interests for AI prompts"""
-        if isinstance(list(user_interests.values())[0], list):
-            # Dictionary format
-            all_interests = []
-            for category, keywords in user_interests.items():
-                if keywords:
-                    all_interests.extend(keywords)
-            return ", ".join(all_interests[:10])  # Limit to first 10 for prompt length
-        else:
-            # Database objects format
+        if isinstance(user_interests, list):
+            # List of UserInterestWeight objects (multi-user mode)
             keywords = [interest.keyword for interest in user_interests[:10]]
             return ", ".join(keywords)
+        elif isinstance(user_interests, dict):
+            # Dictionary format (single-user mode)
+            if user_interests and isinstance(list(user_interests.values())[0], list):
+                # Dictionary of lists
+                all_interests = []
+                for category, keywords in user_interests.items():
+                    if keywords:
+                        all_interests.extend(keywords)
+                return ", ".join(all_interests[:10])  # Limit to first 10 for prompt length
+            else:
+                # Database objects format in dict
+                keywords = [interest.keyword for interest in user_interests[:10]]
+                return ", ".join(keywords)
+        else:
+            # Fallback to default interests
+            return "AI/ML, tech startups, software development, mathematics, behavioral economics"
 
 def test_cost_optimization():
     """Test the cost-optimized pipeline"""
