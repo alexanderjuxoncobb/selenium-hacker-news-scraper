@@ -69,6 +69,13 @@ class EnhancedHackerNewsScraper:
             print("🌐 Using Railway Browserless service...")
             print(f"📍 Endpoint: {browserless_endpoint}")
             print(f"🔑 Token: {browserless_token[:10]}...") # Show first 10 chars for debugging
+            
+            # Fix endpoint for Browserless v2
+            if '/webdriver' in browserless_endpoint and 'chrome/webdriver' not in browserless_endpoint:
+                # Adjust endpoint for Browserless v2
+                browserless_endpoint = browserless_endpoint.replace('/webdriver', '/chrome/webdriver')
+                print(f"🔄 Adjusted endpoint for v2: {browserless_endpoint}")
+            
             # Support both Browserless and standard Selenium Grid
             if 'browserless' in browserless_endpoint:
                 chrome_options.set_capability('browserless:token', browserless_token)
