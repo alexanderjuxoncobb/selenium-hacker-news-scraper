@@ -302,7 +302,10 @@ class CostOptimizedAI:
             content = ""
             content_selectors = [
                 'article', '[role="main"]', 'main', '.content', '.post-content', 
-                '.article-content', '.entry-content', '.post-body'
+                '.article-content', '.entry-content', '.post-body',
+                '.story', '.article', '.text', '.body', '.main-content',
+                '#content', '#main', '#article', '#story', '#post',
+                '.container .text', '.wrapper .content', '.page-content'
             ]
             
             content_found = False
@@ -319,8 +322,16 @@ class CostOptimizedAI:
             
             content = ' '.join(content.split())
             
-            if len(content) < 100:
-                return "Article content too short to summarize effectively."
+            # Only fall back to content-type descriptions for truly minimal content
+            if len(content) < 20:
+                # Check if it's likely a video/podcast based on common indicators
+                content_lower = content.lower()
+                if any(indicator in content_lower for indicator in ['video', 'watch', 'youtube', 'vimeo']):
+                    return "This link shows a video - we recommend watching it for the full content."
+                elif any(indicator in content_lower for indicator in ['podcast', 'listen', 'audio', 'episode']):
+                    return "This is a podcast - we recommend listening to it for the full content."
+                elif len(content) < 10:
+                    return "Minimal content available - may be a link to external media."
             
             # Truncate for token limits
             if len(content) > 8000:
@@ -328,14 +339,16 @@ class CostOptimizedAI:
             
             # Use OpenAI for summary
             prompt = f"""
-            Create a detailed, specific summary of this article. Include concrete details, numbers, quotes, specific technologies, company names, and actionable insights.
+            Create a detailed, specific summary of this article. You MUST always provide a summary regardless of content length - never respond with "too short to summarize" or similar messages.
 
             Requirements:
+            - ALWAYS provide a summary, even if the content is brief - make the best use of whatever information is available
             - Include specific technical details, metrics, or numbers mentioned
             - Quote key phrases or statements from the article
             - Mention specific tools, technologies, companies, or people by name
             - Highlight concrete examples or use cases
             - Focus on actionable insights or specific claims
+            - If content is limited, infer context from titles, headings, or available text fragments
             - CRITICAL: If the article mentions any of these key terms, you MUST include them exactly in your summary: "artificial intelligence", "AI", "machine learning", "ML", "programming", "software development", "tech startups", "startup", "robotics", "hardware", "mathematics", "statistics", "behavioral economics", "behavioral finance"
             - Preserve exact technical terminology and acronyms (e.g., "API" not "api", "PostgreSQL" not "postgres")
             - 3-4 sentences maximum but pack them with specifics
@@ -343,7 +356,7 @@ class CostOptimizedAI:
             Article content:
             {content}
             
-            Specific summary with concrete details:
+            Specific summary with concrete details (ALWAYS provide a summary):
             """
             
             response = self.openai_client.chat.completions.create(

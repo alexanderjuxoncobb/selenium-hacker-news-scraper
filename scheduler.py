@@ -40,10 +40,10 @@ def run_daily_scraper():
 def main():
     """Main scheduler function"""
     print("🤖 Hacker News Daily Scraper Scheduler Starting...")
-    print("⏰ Scheduled to run at 10:58 PM London time every day")
+    print("⏰ Scheduled to run at 8:30 AM London time every day")
     
-    # Schedule the job for 10:58 PM London time (21:58 UTC)
-    schedule.every().day.at("21:58").do(run_daily_scraper)
+    # Schedule the job for 8:30 AM London time (07:30 UTC)
+    schedule.every().day.at("07:30").do(run_daily_scraper)
     
     # For testing - uncomment to run every minute
     # schedule.every().minute.do(run_daily_scraper)

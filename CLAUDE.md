@@ -165,7 +165,8 @@ selenium-hacker-news-scraper/
 ├── ai_pipeline.py               # Cost-optimized AI with local embeddings
 ├── email_sender.py              # Email notification system
 ├── actionable_insights.py       # Business intelligence analyzer
-├── scheduler.py                 # Daily automation scheduler
+├── scheduler.py                 # Daily automation scheduler (LOCAL/STANDALONE - NOT used by Railway)
+├── railway_scheduler.py         # Railway background scheduler (RAILWAY ONLY - used by dashboard/app.py)
 ├── dashboard/
 │   ├── app.py                   # FastAPI web application
 │   ├── database.py              # Database models and operations  
@@ -308,6 +309,21 @@ SECRET_KEY=your-secret-key-for-sessions
 - Keep user data privacy in mind for interaction tracking
 - Design dashboard to work well on mobile devices
 - Consider rate limiting for HN scraping to be respectful
+
+## Scheduler Architecture Notes
+
+### Railway vs Local Scheduling
+- **Railway deployment**: Uses `railway_scheduler.py` imported by `dashboard/app.py`
+  - Runs as background thread within web app process
+  - Activated when `RAILWAY_ENVIRONMENT` or postgres `DATABASE_URL` detected
+  - Integrated execution for resource efficiency
+- **Local/standalone deployment**: Uses `scheduler.py` 
+  - Runs as separate process via `python scheduler.py`
+  - Uses subprocess to execute `multi_user_scraper.py`
+  - Independent of web dashboard
+
+### Key Difference
+Railway **NEVER** uses `scheduler.py` - it's redundant for Railway deployments but kept for local development flexibility.
 
 ---
 *This file will be updated as implementation progresses*
