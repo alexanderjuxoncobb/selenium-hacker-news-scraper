@@ -12,7 +12,10 @@
       "Bash(curl:*)",
       "Bash(pip3 install:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:community.openai.com)",
+      "WebFetch(domain:docs.railway.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

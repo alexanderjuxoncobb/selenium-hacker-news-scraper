@@ -67,7 +67,11 @@ class EnhancedHackerNewsScraper:
         if browserless_endpoint and browserless_token:
             # Use Railway Browserless service (preferred for production)
             print("🌐 Using Railway Browserless service...")
-            chrome_options.set_capability('browserless:token', browserless_token)
+            print(f"📍 Endpoint: {browserless_endpoint}")
+            print(f"🔑 Token: {browserless_token[:10]}...") # Show first 10 chars for debugging
+            # Support both Browserless and standard Selenium Grid
+            if 'browserless' in browserless_endpoint:
+                chrome_options.set_capability('browserless:token', browserless_token)
             try:
                 self.driver = webdriver.Remote(
                     command_executor=browserless_endpoint,
