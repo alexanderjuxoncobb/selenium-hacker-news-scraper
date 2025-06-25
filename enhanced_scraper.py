@@ -48,7 +48,7 @@ class EnhancedHackerNewsScraper:
         # Set up Chrome options
         chrome_options = webdriver.ChromeOptions()
         if headless:
-            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--headless=new")  # 2025 syntax for better performance
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
@@ -59,9 +59,35 @@ class EnhancedHackerNewsScraper:
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
         
-        # Railway-specific: Set Chrome binary path if in production
+        # Initialize Chrome driver - try Browserless first, fallback to local
         import os
+        browserless_endpoint = os.getenv('BROWSER_WEBDRIVER_ENDPOINT')
+        browserless_token = os.getenv('BROWSER_TOKEN')
+        
+        if browserless_endpoint and browserless_token:
+            # Use Railway Browserless service (preferred for production)
+            print("🌐 Using Railway Browserless service...")
+            chrome_options.set_capability('browserless:token', browserless_token)
+            try:
+                self.driver = webdriver.Remote(
+                    command_executor=browserless_endpoint,
+                    options=chrome_options
+                )
+                print("✅ Connected to Browserless service")
+            except Exception as e:
+                print(f"⚠️  Browserless connection failed: {e}")
+                print("🔄 Falling back to local Chrome...")
+                self.driver = self._setup_local_chrome(chrome_options)
+        else:
+            # Fallback to local Chrome (development/local testing)
+            print("🔧 Using local Chrome setup...")
+            self.driver = self._setup_local_chrome(chrome_options)
+    
+    def _setup_local_chrome(self, chrome_options):
+        """Fallback method for local Chrome setup"""
         import glob
+        
+        # Railway-specific: Set Chrome binary path if in production
         if os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('DATABASE_URL', '').startswith('postgres'):
             # Try to find chromium binary in Railway
             chromium_paths = glob.glob("/nix/store/*/bin/chromium")
@@ -73,10 +99,10 @@ class EnhancedHackerNewsScraper:
         
         # Initialize Chrome driver
         try:
-            self.driver = webdriver.Chrome(options=chrome_options)
+            return webdriver.Chrome(options=chrome_options)
         except Exception:
             service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            return webdriver.Chrome(service=service, options=chrome_options)
     
     def scrape_top_stories(self, num_stories=30) -> List[Dict]:
         """Scrape the top N stories from Hacker News homepage"""
