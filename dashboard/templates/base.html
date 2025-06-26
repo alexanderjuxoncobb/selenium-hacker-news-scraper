@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>{% block title %}HN Scraper Dashboard{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -32,6 +32,57 @@
         /* Active navigation styling */
         .nav-link.active {
             border-bottom: 2px solid #ff6600 !important;
+        }
+        
+        /* Mobile viewport responsiveness */
+        @media screen and (max-width: 768px) {
+            /* Ensure navbar responds to viewport changes */
+            nav {
+                width: 100vw;
+                position: relative;
+                left: 0;
+                right: 0;
+            }
+            
+            /* Make navbar container scale with viewport */
+            nav .max-w-7xl {
+                width: 100%;
+                max-width: none;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            /* Mobile menu should always extend full width */
+            #mobile-menu {
+                width: 100vw;
+                position: relative;
+                left: 0;
+                right: 0;
+            }
+            
+            /* Ensure buttons stay in correct positions */
+            .flex.justify-between {
+                width: 100%;
+            }
+            
+            /* Mobile menu button positioning */
+            #mobile-menu-button {
+                position: relative;
+                z-index: 10;
+            }
+        }
+        
+        /* Ensure proper scaling on zoom */
+        @media screen and (max-width: 768px) {
+            body {
+                min-width: 320px; /* Prevent too much shrinking */
+            }
+            
+            /* Force navbar to always be full width */
+            nav {
+                min-width: 100vw;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
