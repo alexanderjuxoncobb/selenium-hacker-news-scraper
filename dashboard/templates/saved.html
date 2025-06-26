@@ -320,15 +320,15 @@
 </div>
 
 <script>
-// Initialize interaction states and functions
-const interactionStates = {};
+// Initialize interaction states and functions (use existing global if available)
+window.interactionStates = window.interactionStates || {};
 
 // Log story interactions with proper toggling
 function logInteraction(storyId, interactionType, buttonElement = null) {
     if (!buttonElement) return;
     
     // Check current state
-    const currentState = interactionStates[`${storyId}-${interactionType}`] || false;
+    const currentState = window.interactionStates[`${storyId}-${interactionType}`] || false;
     const newState = !currentState;
     
     // Show loading state
@@ -346,7 +346,7 @@ function logInteraction(storyId, interactionType, buttonElement = null) {
         .then(data => {
             if (data.status === 'removed') {
                 // Update state
-                interactionStates[`${storyId}-${interactionType}`] = false;
+                window.interactionStates[`${storyId}-${interactionType}`] = false;
                 updateButtonState(buttonElement, interactionType, false);
                 
                 // Show appropriate message
@@ -387,16 +387,16 @@ function logInteraction(storyId, interactionType, buttonElement = null) {
     .then(data => {
         if (data.status === 'logged') {
             // Update state
-            interactionStates[`${storyId}-${interactionType}`] = true;
+            window.interactionStates[`${storyId}-${interactionType}`] = true;
             updateButtonState(buttonElement, interactionType, true);
             
             // For thumbs up/down, also clear the opposite state if set
             if (interactionType === 'thumbs_up') {
-                interactionStates[`${storyId}-thumbs_down`] = false;
+                window.interactionStates[`${storyId}-thumbs_down`] = false;
                 const downButton = document.querySelector(`[data-story-id="${storyId}"][data-interaction="thumbs_down"]`);
                 if (downButton) updateButtonState(downButton, 'thumbs_down', false);
             } else if (interactionType === 'thumbs_down') {
-                interactionStates[`${storyId}-thumbs_up`] = false;
+                window.interactionStates[`${storyId}-thumbs_up`] = false;
                 const upButton = document.querySelector(`[data-story-id="${storyId}"][data-interaction="thumbs_up"]`);
                 if (upButton) updateButtonState(upButton, 'thumbs_up', false);
             }
@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const hasInteraction = data.interactions.some(i => i.interaction_type === interactionType);
                 if (hasInteraction) {
                     // Update both visual state and internal tracking
-                    interactionStates[`${storyId}-${interactionType}`] = true;
+                    window.interactionStates[`${storyId}-${interactionType}`] = true;
                     updateButtonState(button, interactionType, true);
                 }
             }
