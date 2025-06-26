@@ -93,7 +93,11 @@ db = DatabaseManager()
 # Admin authentication
 security = HTTPBasic(auto_error=False)  # Don't auto-raise 401
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required environment variable - no default!
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required environment variable
+
+# Handle Railway's auto-quoting of environment variables
+if ADMIN_PASSWORD and ADMIN_PASSWORD.startswith('"') and ADMIN_PASSWORD.endswith('"'):
+    ADMIN_PASSWORD = ADMIN_PASSWORD.strip('"')
 
 if not ADMIN_PASSWORD:
     print("⚠️  WARNING: ADMIN_PASSWORD environment variable not set! Admin access disabled.")
