@@ -80,6 +80,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"detail": exc.detail}
     )
 
+# Admin Configuration Constants (configurable via environment)
+ADMIN_RECENT_DAYS = int(os.getenv("ADMIN_RECENT_DAYS", "3"))  # Recent stories timeframe
+ADMIN_INTERACTION_DAYS = int(os.getenv("ADMIN_INTERACTION_DAYS", "7"))  # User interaction stats
+ADMIN_ACTIVITY_DAYS = int(os.getenv("ADMIN_ACTIVITY_DAYS", "30"))  # User activity tracking
+ADMIN_TOP_USERS_LIMIT = int(os.getenv("ADMIN_TOP_USERS_LIMIT", "10"))  # Top users display limit
+
 # Initialize database
 # This will use DATABASE_URL from environment if set, otherwise defaults to SQLite
 db = DatabaseManager()
@@ -87,10 +93,21 @@ db = DatabaseManager()
 # Admin authentication
 security = HTTPBasic(auto_error=False)  # Don't auto-raise 401
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "hn_admin_2025")  # Change this in production!
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required environment variable - no default!
+
+if not ADMIN_PASSWORD:
+    print("⚠️  WARNING: ADMIN_PASSWORD environment variable not set! Admin access disabled.")
+    ADMIN_PASSWORD = None
 
 def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify admin credentials"""
+    # Check if admin is properly configured
+    if not ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin access not configured. Set ADMIN_PASSWORD environment variable.",
+        )
+    
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -776,20 +793,34 @@ async def admin_user_detail(request: Request, user_id: str, admin: str = Depends
         # Get comprehensive user data
         user_interests = db.get_user_interest_weights(user_id)
         saved_stories = db.get_saved_stories(user_id)
-        interaction_stats = db.get_user_interaction_stats(user_id, days=30)
+        interaction_stats = db.get_user_interaction_stats(user_id, days=ADMIN_ACTIVITY_DAYS)
         
-        # Get recent relevant stories (last 3 days)
-        available_dates = db.get_available_dates()[:3]
+        # Get recent relevant stories (configurable timeframe)
+        available_dates = db.get_available_dates()[:ADMIN_RECENT_DAYS]
         recent_relevant_stories = []
+        has_relevance_data = False
+        
         for date in available_dates:
             stories_with_relevance = db.get_stories_with_user_relevance(user_id, date)
             # Filter for relevant stories only
             relevant_stories = []
             for story, relevance in stories_with_relevance:
-                if relevance and relevance.is_relevant and relevance.relevance_score > 0.0:
-                    story.relevance_score = relevance.relevance_score  # Add for template access
-                    relevant_stories.append(story)
+                if relevance:
+                    has_relevance_data = True
+                    if relevance.is_relevant and relevance.relevance_score > 0.0:
+                        story.relevance_score = relevance.relevance_score  # Add for template access
+                        relevant_stories.append(story)
             recent_relevant_stories.extend(relevant_stories[:5])  # Top 5 per day
+        
+        # If no relevance data exists, show recent stories from dashboard as fallback
+        if not has_relevance_data and available_dates:
+            recent_stories_fallback = []
+            for date in available_dates[:2]:  # Last 2 days
+                # Use the existing method that gets stories with relevance, just ignore relevance
+                stories_for_fallback = db.get_stories_with_user_relevance(user_id, date)
+                date_stories = [story for story, _ in stories_for_fallback]  # Extract just stories
+                recent_stories_fallback.extend(date_stories[:3])  # Top 3 per day
+            recent_relevant_stories = recent_stories_fallback[:6]  # Max 6 stories
         
         # Calculate engagement metrics
         total_interactions = sum(stat['count'] for stat in interaction_stats.values())
@@ -807,7 +838,8 @@ async def admin_user_detail(request: Request, user_id: str, admin: str = Depends
             "recent_relevant_stories": recent_relevant_stories[:10],
             "total_interactions": total_interactions,
             "engagement_rate": engagement_rate,
-            "available_dates": available_dates
+            "available_dates": available_dates,
+            "has_relevance_data": has_relevance_data
         })
         
     except Exception as e:
@@ -830,7 +862,7 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
         active_users_count = 0
         
         for user in all_users:
-            stats = db.get_user_interaction_stats(user.user_id, days=7)  # Last week
+            stats = db.get_user_interaction_stats(user.user_id, days=ADMIN_INTERACTION_DAYS)
             total_user_interactions = sum(stat['count'] for stat in stats.values())
             total_interactions_all += total_user_interactions
             
@@ -861,16 +893,32 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
         
         # Get cost optimization data from latest multi-user summary
         cost_optimization_data = None
+        cost_data_timestamp = None
         try:
             import glob
             import json
+            import os
+            from datetime import datetime
             # Find the latest multi_user_summary file in parent directory
             summary_files = glob.glob("../multi_user_summary_*.json")
             if summary_files:
                 latest_summary_file = max(summary_files)
+                # Extract timestamp from filename
+                filename = os.path.basename(latest_summary_file)
+                if 'multi_user_summary_' in filename:
+                    timestamp_str = filename.replace('multi_user_summary_', '').replace('.json', '')
+                    try:
+                        cost_data_timestamp = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                    except:
+                        # Fallback to file modification time
+                        cost_data_timestamp = datetime.fromtimestamp(os.path.getmtime(latest_summary_file))
+                
                 with open(latest_summary_file, 'r') as f:
                     summary_data = json.load(f)
                     cost_optimization_data = summary_data.get('cost_optimization', {})
+                    # Add timestamp info to the data
+                    if cost_optimization_data:
+                        cost_optimization_data['last_updated'] = cost_data_timestamp
         except Exception as e:
             print(f"Could not load cost optimization data: {e}")
         
@@ -880,10 +928,12 @@ async def admin_analytics(request: Request, admin: str = Depends(get_current_adm
             "active_users": active_users_count,
             "user_activity_rate": user_activity_rate,
             "avg_interactions_per_user": avg_interactions_per_user,
-            "user_engagement": user_engagement[:10],  # Top 10
+            "user_engagement": user_engagement[:ADMIN_TOP_USERS_LIMIT],
             "recent_stats": recent_stats,
             "available_dates": available_dates,
-            "cost_optimization": cost_optimization_data
+            "cost_optimization": cost_optimization_data,
+            "now": datetime.now,
+            "stats_calculated_at": datetime.now()  # When these stats were calculated
         })
         
     except Exception as e:

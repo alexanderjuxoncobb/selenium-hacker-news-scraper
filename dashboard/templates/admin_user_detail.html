@@ -227,9 +227,15 @@
                                 </div>
                             </div>
                             <div class="ml-4 flex-shrink-0">
+                                {% if story.relevance_score %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     {{ "%.2f"|format(story.relevance_score) }}
                                 </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    Recent
+                                </span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -238,8 +244,18 @@
                 {% else %}
                 <div class="text-center py-8">
                     <i class="fas fa-newspaper text-gray-400 text-3xl mb-2"></i>
+                    {% if has_relevance_data %}
                     <p class="text-gray-500">No relevant stories found recently</p>
                     <p class="text-sm text-gray-400 mt-1">User may need to refine their interests</p>
+                    {% else %}
+                    <p class="text-gray-500">Relevance analysis not yet available</p>
+                    <p class="text-sm text-gray-400 mt-1">Run multi-user scraper to generate relevance scores for this user</p>
+                    <div class="mt-3">
+                        <a href="/admin/run-multi-user-scrape" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-hn-orange hover:bg-hn-orange-dark">
+                            🔄 Run Analysis
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
