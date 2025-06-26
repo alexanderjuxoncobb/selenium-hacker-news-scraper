@@ -102,6 +102,9 @@ if ADMIN_PASSWORD and ADMIN_PASSWORD.startswith('"') and ADMIN_PASSWORD.endswith
 if not ADMIN_PASSWORD:
     print("⚠️  WARNING: ADMIN_PASSWORD environment variable not set! Admin access disabled.")
     ADMIN_PASSWORD = None
+else:
+    print(f"✅ ADMIN_PASSWORD loaded successfully. Length: {len(ADMIN_PASSWORD)}")
+    print(f"🔍 Password value: '{ADMIN_PASSWORD}'")
 
 def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify admin credentials"""
@@ -121,6 +124,15 @@ def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    
+    # Debug logging
+    print(f"🔍 Login attempt:")
+    print(f"  - Username provided: '{credentials.username}' (expected: '{ADMIN_USERNAME}')")
+    print(f"  - Username correct: {correct_username}")
+    print(f"  - Password provided length: {len(credentials.password)} (expected: {len(ADMIN_PASSWORD)})")
+    print(f"  - Password provided: '{credentials.password}'")
+    print(f"  - Password correct: {correct_password}")
+    
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
