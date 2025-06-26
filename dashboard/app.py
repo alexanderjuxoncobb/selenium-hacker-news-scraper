@@ -110,10 +110,6 @@ def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
-    
-    # Debug logging to track auth attempts
-    print(f"🔍 AUTH: {credentials.username}/{credentials.password} -> user:{correct_username} pass:{correct_password}")
-    
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
