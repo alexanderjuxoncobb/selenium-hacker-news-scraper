@@ -53,25 +53,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions with custom error pages for admin routes"""
     # Check if this is an authentication error on admin routes
     if exc.status_code == 401 and request.url.path.startswith("/admin"):
-        # Get the referrer URL to return to
-        referer = request.headers.get("referer", "/")
-        
-        # If it's an API request, return JSON
-        if request.headers.get("accept", "").startswith("application/json"):
-            return JSONResponse(
-                status_code=exc.status_code,
-                content={"detail": exc.detail}
-            )
-        
-        # Otherwise, return HTML error page
-        return templates.TemplateResponse(
-            "auth_error.html",
-            {
-                "request": request,
-                "error_message": "Invalid admin credentials. Please try again.",
-                "return_url": referer
-            },
-            status_code=200  # Return 200 to prevent browser auth popup
+        # For HTTP Basic Auth, we need to return 401 to trigger browser login popup
+        # Let the 401 pass through with proper WWW-Authenticate header
+        return JSONResponse(
+            status_code=401,
+            content={"detail": exc.detail},
+            headers=exc.headers or {}
         )
     
     # For other errors, return default JSON response
@@ -103,8 +90,7 @@ if not ADMIN_PASSWORD:
     print("⚠️  WARNING: ADMIN_PASSWORD environment variable not set! Admin access disabled.")
     ADMIN_PASSWORD = None
 else:
-    print(f"✅ ADMIN_PASSWORD loaded successfully. Length: {len(ADMIN_PASSWORD)}")
-    print(f"🔍 Password value: '{ADMIN_PASSWORD}'")
+    print(f"✅ ADMIN_PASSWORD loaded successfully.")
 
 def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify admin credentials"""
@@ -124,15 +110,6 @@ def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
     
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
-    
-    # Debug logging
-    print(f"🔍 Login attempt:")
-    print(f"  - Username provided: '{credentials.username}' (expected: '{ADMIN_USERNAME}')")
-    print(f"  - Username correct: {correct_username}")
-    print(f"  - Password provided length: {len(credentials.password)} (expected: {len(ADMIN_PASSWORD)})")
-    print(f"  - Password provided: '{credentials.password}'")
-    print(f"  - Password correct: {correct_password}")
-    
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
