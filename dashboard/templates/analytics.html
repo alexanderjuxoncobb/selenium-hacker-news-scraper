@@ -98,31 +98,49 @@
         </div>
         <div class="p-6">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {% for interaction_type, stats in interaction_stats.items() %}
-                <div class="text-center p-4 border border-gray-200 rounded-lg">
-                    <div class="text-3xl mb-2">
-                        {% if interaction_type == 'click' %}🖱️
-                        {% elif interaction_type == 'thumbs_up' %}👍
-                        {% elif interaction_type == 'thumbs_down' %}👎
-                        {% elif interaction_type == 'save' %}📑
-                        {% elif interaction_type == 'page_read' %}📖
-                        {% else %}📊
-                        {% endif %}
-                    </div>
-                    <div class="text-2xl font-semibold text-gray-900 mb-1">{{ stats.count }}</div>
-                    <div class="text-sm text-gray-500 mb-2">
-                        {% if interaction_type == 'click' %}Clicks
-                        {% elif interaction_type == 'thumbs_up' %}Thumbs Up
-                        {% elif interaction_type == 'thumbs_down' %}Thumbs Down
-                        {% elif interaction_type == 'save' %}Saves
-                        {% elif interaction_type == 'page_read' %}Pages Read
-                        {% else %}{{ interaction_type.replace('_', ' ').title() }}
-                        {% endif %}
-                    </div>
-                    {% if stats.avg_duration > 0 %}
-                    <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
+                {% set interaction_order = ['click', 'save', 'thumbs_up', 'thumbs_down', 'page_read'] %}
+                {% for interaction_type in interaction_order %}
+                    {% if interaction_type in interaction_stats %}
+                        {% set stats = interaction_stats[interaction_type] %}
+                        <div class="text-center p-4 border border-gray-200 rounded-lg">
+                            <div class="text-3xl mb-2">
+                                {% if interaction_type == 'click' %}🖱️
+                                {% elif interaction_type == 'thumbs_up' %}👍
+                                {% elif interaction_type == 'thumbs_down' %}👎
+                                {% elif interaction_type == 'save' %}📑
+                                {% elif interaction_type == 'page_read' %}📖
+                                {% else %}📊
+                                {% endif %}
+                            </div>
+                            <div class="text-2xl font-semibold text-gray-900 mb-1">{{ stats.count }}</div>
+                            <div class="text-sm text-gray-500 mb-2">
+                                {% if interaction_type == 'click' %}Clicks
+                                {% elif interaction_type == 'thumbs_up' %}Thumbs Up
+                                {% elif interaction_type == 'thumbs_down' %}Thumbs Down
+                                {% elif interaction_type == 'save' %}Saves
+                                {% elif interaction_type == 'page_read' %}Pages Read
+                                {% else %}{{ interaction_type.replace('_', ' ').title() }}
+                                {% endif %}
+                            </div>
+                            {% if stats.avg_duration > 0 %}
+                            <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
+                            {% endif %}
+                        </div>
                     {% endif %}
-                </div>
+                {% endfor %}
+                
+                {# Display any other interaction types that might exist but aren't in our predefined order #}
+                {% for interaction_type, stats in interaction_stats.items() %}
+                    {% if interaction_type not in interaction_order %}
+                        <div class="text-center p-4 border border-gray-200 rounded-lg">
+                            <div class="text-3xl mb-2">📊</div>
+                            <div class="text-2xl font-semibold text-gray-900 mb-1">{{ stats.count }}</div>
+                            <div class="text-sm text-gray-500 mb-2">{{ interaction_type.replace('_', ' ').title() }}</div>
+                            {% if stats.avg_duration > 0 %}
+                            <div class="text-xs text-gray-400">{{ stats.avg_duration }}s avg</div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 {% endfor %}
             </div>
             

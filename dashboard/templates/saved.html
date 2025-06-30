@@ -624,6 +624,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const storyId = button.dataset.storyId;
         const interactionType = button.dataset.interaction;
         
+        // In saved stories section, all save buttons should start as active
+        if (interactionType === 'save') {
+            window.interactionStates[`${storyId}-${interactionType}`] = true;
+            updateButtonState(button, interactionType, true);
+        }
+        
         fetch(`/api/interactions/{{ user.user_id }}/${storyId}`)
         .then(response => response.json())
         .then(data => {

@@ -820,7 +820,9 @@ async def admin_user_detail(request: Request, user_id: str, admin: str = Depends
         thumbs_up = interaction_stats.get('thumbs_up', {}).get('count', 0)
         thumbs_down = interaction_stats.get('thumbs_down', {}).get('count', 0)
         
-        engagement_rate = (thumbs_up + thumbs_down) / max(len(recent_relevant_stories), 1) * 100
+        # Calculate engagement as percentage of stories that received feedback (capped at 100%)
+        total_feedback = thumbs_up + thumbs_down
+        engagement_rate = min((total_feedback / max(len(recent_relevant_stories), 1)) * 100, 100)
         
         return templates.TemplateResponse("admin_user_detail.html", {
             "request": request,
