@@ -323,9 +323,9 @@ class HackerNewsScraper:
                 pass
             return None
     
-    def analyze_comments(self, hn_discussion_url: str, num_comments=10) -> Dict:
+    def analyse_comments(self, hn_discussion_url: str, num_comments=10) -> Dict:
         """
-        Scrape and analyze comments from HN discussion page
+        Scrape and analyse comments from HN discussion page
         Enhanced with basic theme extraction (AI analysis placeholder)
         """
         if not hn_discussion_url:
@@ -361,10 +361,10 @@ class HackerNewsScraper:
                     continue
             
             # Basic analysis (will be enhanced with AI later)
-            analysis = self._analyze_comment_themes(comments_data)
+            analysis = self._analyse_comment_themes(comments_data)
             analysis["top_comments"] = comments_data
             
-            print(f"  ✅ Analyzed {len(comments_data)} comments")
+            print(f"  ✅ Analysed {len(comments_data)} comments")
             return analysis
             
         except TimeoutException:
@@ -438,7 +438,7 @@ class HackerNewsScraper:
             print(f"    ❌ Error extracting comment data: {str(e)}")
             return None
     
-    def _analyze_comment_themes(self, comments_data: List[Dict]) -> Dict:
+    def _analyse_comment_themes(self, comments_data: List[Dict]) -> Dict:
         """
         AI-powered comment theme analysis and sentiment extraction
         """
@@ -448,12 +448,12 @@ class HackerNewsScraper:
                 "main_themes": [],
                 "agreement_points": [],
                 "disagreement_points": [],
-                "sentiment_summary": "No comments to analyze"
+                "sentiment_summary": "No comments to analyse"
             }
         
         try:
             # Prepare comment text for analysis (limit to top comments to manage token usage)
-            top_comments = comments_data[:8]  # Analyze top 8 comments to balance quality and cost
+            top_comments = comments_data[:8]  # Analyse top 8 comments to balance quality and cost
             comments_text = []
             
             for i, comment in enumerate(top_comments, 1):
@@ -464,9 +464,9 @@ class HackerNewsScraper:
             
             # AI analysis prompt
             prompt = f"""
-            Analyze these Hacker News comments with specific details and quotes. You MUST respond with valid JSON only.
+            Analyse these Hacker News comments with specific details and quotes. You MUST respond with valid JSON only.
 
-            IMPORTANT: You are analyzing ONLY THE TOP {len(top_comments)} COMMENTS from a larger discussion. 
+            IMPORTANT: You are analysing ONLY THE TOP {len(top_comments)} COMMENTS from a larger discussion. 
             Do NOT mention the specific number of comments in your sentiment_summary.
             Focus on the content and themes, not the quantity.
 
@@ -540,7 +540,7 @@ class HackerNewsScraper:
                 "main_themes": ["AI analysis failed - basic fallback used"],
                 "agreement_points": ["Analysis error occurred"],
                 "disagreement_points": ["Analysis error occurred"],
-                "sentiment_summary": f"AI analysis failed, analyzed {len(comments_data)} comments",
+                "sentiment_summary": f"AI analysis failed, analysed {len(comments_data)} comments",
                 "comment_stats": {
                     "total_comments": len(comments_data),
                     "avg_comment_length": sum([c["length"] for c in comments_data]) // len(comments_data) if comments_data else 0,
@@ -676,9 +676,9 @@ class HackerNewsScraper:
                 print("📄 Getting article summary...")
                 article_summary = self.get_article_summary(story['url'])
             
-            # Analyze comments for all stories
-            print("💬 Analyzing comments...")
-            comments_analysis = self.analyze_comments(story['hn_discussion_url'])
+            # Analyse comments for all stories
+            print("💬 Analysing comments...")
+            comments_analysis = self.analyse_comments(story['hn_discussion_url'])
             
             # Now check if story is relevant for email filtering
             is_relevant = self.is_relevant_story(story)
@@ -777,7 +777,7 @@ def test_email_generation():
             else:
                 article_summary = None
             
-            comments_analysis = scraper.analyze_comments(story['hn_discussion_url'], num_comments=3)
+            comments_analysis = scraper.analyse_comments(story['hn_discussion_url'], num_comments=3)
             
             story.update({
                 "article_summary": article_summary,

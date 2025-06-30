@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Daily Scheduler for Hacker News Scraper
-Runs the multi-user scraper at 10:58 PM London time every day
-Processes stories for all registered users and sends personalized email digests
+Runs the multi-user scraper at 6:30 PM London time every day
+Processes stories for all registered users and sends personalised email digests
 """
 
 import schedule
@@ -40,10 +40,10 @@ def run_daily_scraper():
 def main():
     """Main scheduler function"""
     print("🤖 Hacker News Daily Scraper Scheduler Starting...")
-    print("⏰ Scheduled to run at 8:30 AM London time every day")
+    print("⏰ Scheduled to run at 6:30 PM London time every day")
     
-    # Schedule the job for 8:30 AM London time (07:30 UTC)
-    schedule.every().day.at("07:30").do(run_daily_scraper)
+    # Schedule the job for 6:30 PM London time (17:30 UTC)
+    schedule.every().day.at("17:30").do(run_daily_scraper)
     
     # For testing - uncomment to run every minute
     # schedule.every().minute.do(run_daily_scraper)

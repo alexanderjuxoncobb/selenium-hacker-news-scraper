@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Multi-User Enhanced Hacker News Scraper
-Processes stories for all users and sends personalized email digests
+Processes stories for all users and sends personalised email digests
 """
 
 import sys
@@ -132,8 +132,8 @@ def main():
         # Store results in database
         store_multi_user_results(db, overall_summary)
         
-        # Send personalized emails
-        print("\n📧 Sending personalized email digests...")
+        # Send personalised emails
+        print("\n📧 Sending personalised email digests...")
         users_digest_data = overall_summary.get('users_digest_data', [])
         
         # Initialize email_results with default values

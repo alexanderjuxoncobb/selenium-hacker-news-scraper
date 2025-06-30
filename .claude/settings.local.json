@@ -15,7 +15,8 @@
       "Bash(ls:*)",
       "WebFetch(domain:community.openai.com)",
       "WebFetch(domain:docs.railway.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

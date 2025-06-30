@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cost-Optimized AI Pipeline for HN Scraper
+Cost-Optimised AI Pipeline for HN Scraper
 Uses local embeddings for initial filtering, OpenAI only for final analysis
 """
 
@@ -16,9 +16,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from openai import OpenAI
 from dotenv import load_dotenv
 
-class CostOptimizedAI:
+class CostOptimisedAI:
     def __init__(self, openai_api_key: Optional[str] = None, cache_dir: str = ".ai_cache"):
-        """Initialize the cost-optimized AI pipeline"""
+        """Initialize the cost-optimised AI pipeline"""
         load_dotenv()
         
         # Initialize OpenAI client
@@ -387,7 +387,7 @@ class CostOptimizedAI:
             print(f"❌ Error getting article summary for {url}: {e}")
             return None
     
-    def analyze_comments_efficient(self, comments_data: List[Dict]) -> Dict:
+    def analyse_comments_efficient(self, comments_data: List[Dict]) -> Dict:
         """
         Efficient comment analysis using local processing + targeted AI
         """
@@ -687,7 +687,7 @@ class CostOptimizedAI:
             }
     
     def get_cost_report(self) -> Dict:
-        """Get cost optimization report"""
+        """Get cost optimisation report"""
         total_potential_calls = self.api_calls_made + self.api_calls_saved
         if total_potential_calls == 0:
             savings_percentage = 0
@@ -775,9 +775,9 @@ class CostOptimizedAI:
             # Fallback to default interests
             return "AI/ML, tech startups, software development, mathematics, behavioral economics"
 
-def test_cost_optimization():
-    """Test the cost-optimized pipeline"""
-    ai = CostOptimizedAI()
+def test_cost_optimisation():
+    """Test the cost-optimised pipeline"""
+    ai = CostOptimisedAI()
     
     # Test stories
     test_stories = [
@@ -787,7 +787,7 @@ def test_cost_optimization():
         {"title": "Music Festival Lineup Announced", "url": "https://music.com/festival"},
     ]
     
-    print("🧪 Testing cost-optimized relevance filtering...")
+    print("🧪 Testing cost-optimised relevance filtering...")
     
     for story in test_stories:
         is_relevant, score, reasoning = ai.is_relevant_story_local(story)
@@ -802,4 +802,4 @@ def test_cost_optimization():
     print(f"   Estimated money saved: ${report['estimated_money_saved']}")
 
 if __name__ == "__main__":
-    test_cost_optimization()
+    test_cost_optimisation()

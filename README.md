@@ -1,24 +1,24 @@
 # 🤖 Enhanced AI-Powered Hacker News Daily Scraper
 
-An intelligent Python-based web scraper with web dashboard, cost-optimized AI pipeline, email notifications, and business intelligence extraction. Automatically scrapes top 30 Hacker News stories daily, analyzes relevance with 75% cost savings through local embeddings, and provides actionable insights through a modern web interface.
+An intelligent Python-based web scraper with web dashboard, cost-optimised AI pipeline, email notifications, and business intelligence extraction. Automatically scrapes top thirty Hacker News stories daily, analyses relevance with 75% cost savings through local embeddings, and provides actionable insights through a modern web interface.
 
 ## ✨ Key Features
 
 ### **🚀 Enhanced Pipeline (NEW)**
-- **💰 75% Cost Reduction**: Local embeddings + selective OpenAI usage
+- **💰 75% Cost Reduction**: Local embeddings and selective OpenAI usage
 - **🌐 Web Dashboard**: Modern FastAPI interface with mobile support
 - **📧 Email Notifications**: Rich HTML emails with dashboard links
 - **🔍 Business Intelligence**: Actionable insights and market signals
-- **📊 User Analytics**: Interaction tracking and personalized learning
+- **📊 User Analytics**: Interaction tracking and personalised learning
 
 ### **🧠 AI & Analysis**
-- **🧠 Cost-Optimized AI Filtering**: Local embeddings with GPT-4o-mini refinement
+- **🧠 Cost-Optimised AI Filtering**: Local embeddings with GPT-four-o-mini refinement
 - **📄 Smart Article Summarization**: Cached summaries with detailed technical insights
 - **💬 Advanced Comment Analysis**: Deep technical extraction and sentiment analysis
 - **🎯 Actionable Insights**: Market signals, investment opportunities, competitive intelligence
 
 ### **🛠️ Platform Features**
-- **⏰ Daily Automation**: Runs automatically at 8:30 AM London time
+- **⏰ Daily Automation**: Runs automatically at 6:30 PM London time
 - **📱 Mobile-Responsive**: Works perfectly on phones, tablets, and desktop
 - **💾 Data Persistence**: SQLite database with full history and analytics
 - **🔧 Fully Customizable**: Web-based interest management and settings
@@ -42,10 +42,10 @@ cp .env.example .env
 
 ### 3. Test the Enhanced System
 ```bash
-# Test cost-optimized AI pipeline
+# Test cost-optimised AI pipeline
 python ai_pipeline.py
 
-# Test enhanced scraper (3 stories with full features)
+# Test enhanced scraper (three stories with full features)
 python enhanced_scraper.py test
 
 # Test email notifications (requires .env setup)
@@ -183,7 +183,7 @@ self.user_interests = {
 ```
 
 ### Scheduling Options
-- **Default**: 8:30 AM London time daily
+- **Default**: 6:30 PM London time daily
 - **Testing**: Uncomment line 48 in `scheduler.py` to run every minute
 - **Custom**: Modify the schedule in `scheduler.py` line 45
 

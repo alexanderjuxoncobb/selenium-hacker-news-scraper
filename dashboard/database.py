@@ -1615,7 +1615,7 @@ class DatabaseManager:
         import os
         # Add parent directory to path to import ai_pipeline
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from ai_pipeline import CostOptimizedAI
+        from ai_pipeline import CostOptimisedAI
         
         stats = {
             'total_stories': 0,
@@ -1630,7 +1630,7 @@ class DatabaseManager:
             return stats  # No interests to process
         
         # Initialize AI pipeline
-        ai_pipeline = CostOptimizedAI()
+        ai_pipeline = CostOptimisedAI()
         
         # Get all recent stories (limit to last N days for performance)
         with self.get_connection() as conn:
@@ -1710,7 +1710,7 @@ class DatabaseManager:
         import os
         # Add parent directory to path to import ai_pipeline
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from ai_pipeline import CostOptimizedAI
+        from ai_pipeline import CostOptimisedAI
         
         stats = {
             'total_stories': 0,
@@ -1728,7 +1728,7 @@ class DatabaseManager:
         print(f"✅ Found interests: {sum(len(v) for v in user_interests.values())} total")
         
         # Initialize AI pipeline
-        ai_pipeline = CostOptimizedAI()
+        ai_pipeline = CostOptimisedAI()
         
         # Get stories from the start date onwards
         with self.get_connection() as conn:

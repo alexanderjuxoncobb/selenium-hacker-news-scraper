@@ -22,9 +22,9 @@ class InterestLearner:
         self.decay_factor = 0.98   # Slight decay for old feedback (2% less impact over time)
         self.min_feedback_count = 3  # Minimum feedback needed before adjusting weights
         
-    def analyze_user_feedback(self, days_back: int = 30) -> Dict:
+    def analyse_user_feedback(self, days_back: int = 30) -> Dict:
         """
-        Analyze user feedback patterns over the last N days
+        Analyse user feedback patterns over the last N days
         Returns analysis of what keywords correlate with positive/negative feedback
         """
         with sqlite3.connect(self.db_path) as conn:
@@ -52,7 +52,7 @@ class InterestLearner:
         if not interactions:
             return {"status": "no_feedback", "message": "No feedback data found"}
         
-        # Analyze feedback patterns
+        # Analyse feedback patterns
         positive_feedback = []  # Stories user liked
         negative_feedback = []  # Stories user disliked
         
@@ -345,12 +345,12 @@ class InterestLearner:
     
     def run_learning_cycle(self, days_back: int = 30) -> Dict:
         """
-        Run a complete learning cycle: analyze feedback → calculate adjustments → apply changes
+        Run a complete learning cycle: analyse feedback → calculate adjustments → apply changes
         """
-        print(f"🧠 Running interest learning cycle (analyzing last {days_back} days)...")
+        print(f"🧠 Running interest learning cycle (analysing last {days_back} days)...")
         
-        # Step 1: Analyze feedback
-        feedback_analysis = self.analyze_user_feedback(days_back)
+        # Step 1: Analyse feedback
+        feedback_analysis = self.analyse_user_feedback(days_back)
         if feedback_analysis["status"] != "success":
             return feedback_analysis
         
@@ -383,7 +383,7 @@ class InterestLearner:
     def _refresh_ai_pipeline(self):
         """Refresh the AI pipeline to use updated interest weights"""
         try:
-            from ai_pipeline import CostOptimizedAI
+            from ai_pipeline import CostOptimisedAI
             
             # The AI pipeline will automatically load updated interests from database
             # when initialized, so we just need to signal that embeddings should be refreshed

@@ -47,7 +47,7 @@ class ActionableInsightsAnalyzer:
             ]
         }
     
-    def analyze_story_for_insights(self, story_data: Dict) -> Dict:
+    def analyse_story_for_insights(self, story_data: Dict) -> Dict:
         """
         Extract actionable insights from a story using AI analysis
         """
@@ -369,7 +369,7 @@ def test_insights_analyzer():
     }
     
     print("🧪 Testing actionable insights analyzer...")
-    insights = analyzer.analyze_story_for_insights(test_story)
+    insights = analyzer.analyse_story_for_insights(test_story)
     
     print(f"\n📊 Insights Analysis Results:")
     print(f"Has insights: {insights.get('has_insights', False)}")

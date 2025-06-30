@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Hacker News Scraper with Cost-Optimized AI Pipeline
+Enhanced Hacker News Scraper with Cost-Optimised AI Pipeline
 Uses local embeddings for initial filtering, cached summaries, and targeted OpenAI usage
 """
 
@@ -25,19 +25,19 @@ from datetime import datetime
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 
-from ai_pipeline import CostOptimizedAI
+from ai_pipeline import CostOptimisedAI
 from email_sender import get_email_notifier
 from actionable_insights import ActionableInsightsAnalyzer
 from database import DatabaseManager
 
 class EnhancedHackerNewsScraper:
     def __init__(self, headless=True, openai_api_key=None):
-        """Initialize the enhanced scraper with cost-optimized AI"""
+        """Initialize the enhanced scraper with cost-optimised AI"""
         # Load environment variables
         load_dotenv()
         
-        # Initialize cost-optimized AI pipeline
-        self.ai = CostOptimizedAI(openai_api_key)
+        # Initialize cost-optimised AI pipeline
+        self.ai = CostOptimisedAI(openai_api_key)
         
         # Initialize actionable insights analyzer
         self.insights_analyzer = ActionableInsightsAnalyzer(openai_api_key)
@@ -212,7 +212,7 @@ class EnhancedHackerNewsScraper:
     
     def is_relevant_story(self, story_data: Dict, user_interests: Optional[Dict] = None) -> bool:
         """
-        Cost-optimized relevance filtering using local embeddings + AI refinement
+        Cost-optimised relevance filtering using local embeddings + AI refinement
         Now supports user-specific interests for multi-user filtering
         """
         # Use local embedding-based filtering first
@@ -240,9 +240,9 @@ class EnhancedHackerNewsScraper:
         """
         return self.ai.get_article_summary_cached(url)
     
-    def analyze_comments(self, hn_discussion_url: str, num_comments=10) -> Dict:
+    def analyse_comments(self, hn_discussion_url: str, num_comments=10) -> Dict:
         """
-        Scrape and analyze comments with cost optimization
+        Scrape and analyse comments with cost optimisation
         """
         if not hn_discussion_url:
             return {
@@ -274,11 +274,11 @@ class EnhancedHackerNewsScraper:
                     print(f"    ❌ Error extracting comment {i}: {str(e)}")
                     continue
             
-            # Use cost-optimized comment analysis
-            analysis = self.ai.analyze_comments_efficient(comments_data)
+            # Use cost-optimised comment analysis
+            analysis = self.ai.analyse_comments_efficient(comments_data)
             analysis["top_comments"] = comments_data
             
-            print(f"  ✅ Analyzed {len(comments_data)} comments")
+            print(f"  ✅ Analysed {len(comments_data)} comments")
             return analysis
             
         except TimeoutException:
@@ -506,7 +506,7 @@ class EnhancedHackerNewsScraper:
         relevant_stories = daily_data.get('relevant_stories', 0)
         stories = daily_data.get('stories', [])
         
-        # Get cost optimization report and insights summary
+        # Get cost optimisation report and insights summary
         cost_report = self.ai.get_cost_report()
         insights_summary = daily_data.get('actionable_insights_summary', {})
         
@@ -589,10 +589,10 @@ class EnhancedHackerNewsScraper:
     
     def process_daily_stories(self, user_interests: Optional[Dict] = None) -> Dict:
         """
-        Main function to process daily stories with cost optimization
+        Main function to process daily stories with cost optimisation
         Now supports user-specific interests for multi-user filtering
         """
-        user_desc = "personalized" if user_interests else "default"
+        user_desc = "personalised" if user_interests else "default"
         print(f"🚀 Starting enhanced daily Hacker News scraping with {user_desc} interests...")
         
         # Print initial cost report
@@ -617,7 +617,7 @@ class EnhancedHackerNewsScraper:
             story['tags'] = story_tags
             print(f"🏷️ Story tags: {', '.join(story_tags)}")
             
-            # Check if story is relevant using cost-optimized filtering (with user-specific interests)
+            # Check if story is relevant using cost-optimised filtering (with user-specific interests)
             if self.is_relevant_story(story, user_interests):
                 relevant_count += 1
                 print(f"✅ Story marked as relevant ({relevant_count}/30)")
@@ -628,13 +628,13 @@ class EnhancedHackerNewsScraper:
                     print("📄 Getting article summary...")
                     article_summary = self.get_article_summary(story['url'])
                 
-                # Analyze comments
-                print("💬 Analyzing comments...")
-                comments_analysis = self.analyze_comments(story['hn_discussion_url'])
+                # Analyse comments
+                print("💬 Analysing comments...")
+                comments_analysis = self.analyse_comments(story['hn_discussion_url'])
                 
-                # Analyze for actionable insights
-                print("🔍 Analyzing actionable insights...")
-                actionable_insights = self.insights_analyzer.analyze_story_for_insights({
+                # Analyse for actionable insights
+                print("🔍 Analysing actionable insights...")
+                actionable_insights = self.insights_analyzer.analyse_story_for_insights({
                     **story,
                     "article_summary": article_summary,
                     "comments_analysis": comments_analysis
@@ -749,11 +749,11 @@ class EnhancedHackerNewsScraper:
             
             # Analyze comments (shared analysis)
             print("    💬 Analyzing comments...")
-            comments_analysis = self.analyze_comments(story['hn_discussion_url'])
+            comments_analysis = self.analyse_comments(story['hn_discussion_url'])
             
             # Analyze for actionable insights
             print("    🔍 Analyzing actionable insights...")
-            actionable_insights = self.insights_analyzer.analyze_story_for_insights({
+            actionable_insights = self.insights_analyzer.analyse_story_for_insights({
                 **story,
                 "article_summary": article_summary,
                 "comments_analysis": comments_analysis
@@ -769,8 +769,8 @@ class EnhancedHackerNewsScraper:
             
             processed_stories.append(story)
         
-        # Generate personalized digests for each user
-        print(f"👥 Generating personalized digests for {len(users_with_interests)} users...")
+        # Generate personalised digests for each user
+        print(f"👥 Generating personalised digests for {len(users_with_interests)} users...")
         users_digest_data = []
         
         for user, user_interests in users_with_interests:
@@ -835,7 +835,7 @@ class EnhancedHackerNewsScraper:
         
         print(f"✅ Multi-user processing complete!")
         print(f"📊 Summary: {len(processed_stories)} new stories processed (skipped {skipped_count} duplicates), avg {overall_summary['avg_relevant_per_user']:.1f} relevant per user")
-        print(f"💰 Cost optimization: {final_cost_report.get('savings_percentage', 0)}% saved")
+        print(f"💰 Cost optimisation: {final_cost_report.get('savings_percentage', 0)}% saved")
         
         return overall_summary
     
@@ -926,7 +926,7 @@ def test_enhanced_scraper():
                 else:
                     article_summary = None
                 
-                comments_analysis = scraper.analyze_comments(story['hn_discussion_url'], num_comments=3)
+                comments_analysis = scraper.analyse_comments(story['hn_discussion_url'], num_comments=3)
                 
                 story.update({
                     "article_summary": article_summary,
