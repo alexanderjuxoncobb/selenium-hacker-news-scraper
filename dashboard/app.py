@@ -108,14 +108,6 @@ def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     
-    # Debug logging (remove after fixing)
-    print(f"🔍 DEBUG - Username received: '{credentials.username}', expected: '{ADMIN_USERNAME}'")
-    print(f"🔍 DEBUG - Username match: {credentials.username == ADMIN_USERNAME}")
-    print(f"🔍 DEBUG - Password received: '{credentials.password}'")
-    print(f"🔍 DEBUG - Password expected: '{ADMIN_PASSWORD}'")
-    print(f"🔍 DEBUG - Password match: {credentials.password == ADMIN_PASSWORD}")
-    print(f"🔍 DEBUG - Password lengths - received: {len(credentials.password)}, expected: {len(ADMIN_PASSWORD)}")
-    
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
     if not (correct_username and correct_password):
