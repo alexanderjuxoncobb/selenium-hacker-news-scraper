@@ -39,10 +39,10 @@ def run_daily_scrape():
 
 def run_scheduler():
     """Run the scheduler in a separate thread"""
-    # Schedule the job for 7:11 PM London time (18:11 UTC)
-    schedule.every().day.at("18:11").do(run_daily_scrape)
+    # Schedule the job for 7:30 PM London time (18:30 UTC)
+    schedule.every().day.at("18:30").do(run_daily_scrape)
     
-    print("📅 Scheduler started - Daily scrape at 7:11 PM London time (18:11 UTC)")
+    print("📅 Scheduler started - Daily scrape at 7:30 PM London time (18:30 UTC)")
     print(f"Current time: {datetime.now(pytz.timezone('Europe/London')).strftime('%Y-%m-%d %H:%M:%S')} London")
     
     # Run the scheduler
