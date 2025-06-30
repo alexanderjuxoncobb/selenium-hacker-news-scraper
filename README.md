@@ -18,7 +18,7 @@ An intelligent Python-based web scraper with web dashboard, cost-optimised AI pi
 - **🎯 Actionable Insights**: Market signals, investment opportunities, competitive intelligence
 
 ### **🛠️ Platform Features**
-- **⏰ Daily Automation**: Runs automatically at 6:30 PM London time
+- **⏰ Daily Automation**: Runs automatically at 8:30 AM London time
 - **📱 Mobile-Responsive**: Works perfectly on phones, tablets, and desktop
 - **💾 Data Persistence**: SQLite database with full history and analytics
 - **🔧 Fully Customizable**: Web-based interest management and settings
@@ -183,7 +183,7 @@ self.user_interests = {
 ```
 
 ### Scheduling Options
-- **Default**: 6:30 PM London time daily
+- **Default**: 8:30 AM London time daily
 - **Testing**: Uncomment line 48 in `scheduler.py` to run every minute
 - **Custom**: Modify the schedule in `scheduler.py` line 45
 
