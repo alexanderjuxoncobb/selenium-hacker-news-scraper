@@ -284,7 +284,7 @@ async def setup_submit(request: Request):
         user_interests = db.get_user_interest_weights(user_id)
         
         # Get dashboard base URL from environment
-        dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', request.url_root.rstrip('/'))
+        dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', f"{request.url.scheme}://{request.url.netloc}")
         
         return templates.TemplateResponse("setup_success.html", {
             "request": request,
