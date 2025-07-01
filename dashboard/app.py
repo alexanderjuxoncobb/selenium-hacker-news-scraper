@@ -283,11 +283,15 @@ async def setup_submit(request: Request):
         user = db.get_user(user_id)
         user_interests = db.get_user_interest_weights(user_id)
         
+        # Get dashboard base URL from environment
+        dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', request.url_root.rstrip('/'))
+        
         return templates.TemplateResponse("setup_success.html", {
             "request": request,
             "user": user,
             "interest_count": len(user_interests),
-            "processing_stats": processing_stats
+            "processing_stats": processing_stats,
+            "dashboard_base_url": dashboard_base_url
         })
         
     except Exception as e:
