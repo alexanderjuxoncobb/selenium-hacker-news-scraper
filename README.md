@@ -2,7 +2,7 @@
 
 An intelligent Python-based web scraper with web dashboard, cost-optimised AI pipeline, email notifications, and business intelligence extraction. Automatically scrapes top thirty Hacker News stories daily, analyses relevance with 75% cost savings through local embeddings, and provides actionable insights through a modern web interface.
 
-Sign up for an account: https://hnscraper.com/
+Sign up for an account: https://hnscraper.com
 
 ## ✨ Key Features
 
