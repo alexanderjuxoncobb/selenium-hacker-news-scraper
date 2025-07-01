@@ -286,6 +286,10 @@ async def setup_submit(request: Request):
         # Get dashboard base URL from environment
         dashboard_base_url = os.getenv('DASHBOARD_BASE_URL', f"{request.url.scheme}://{request.url.netloc}")
         
+        # Ensure the dashboard_base_url has the proper protocol
+        if dashboard_base_url and not dashboard_base_url.startswith(('http://', 'https://')):
+            dashboard_base_url = f"https://{dashboard_base_url}"
+        
         return templates.TemplateResponse("setup_success.html", {
             "request": request,
             "user": user,
