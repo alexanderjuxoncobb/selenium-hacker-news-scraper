@@ -2,6 +2,9 @@
 
 A complete multi-user platform for personalised Hacker News intelligence. Features web dashboard, cost-optimised AI pipeline with local embeddings, multi-user email digests, user analytics, and business intelligence extraction. Deployed on Railway with PostgreSQL and automated daily processing.
 
+**I have stopped hosting this online due to rising costs and no time to optimise the deployment. Please contact me if you want to host it yourself and I can help you set it up!**
+
+
 Sign up for an account: https://hnscraper.com
 
 ## ✨ Key Features
